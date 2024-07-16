@@ -1,9 +1,7 @@
 mod tokens;
 mod lexer;
+mod parser;
 
 fn main() {
-    let tokens = lexer::lex("test.txt").unwrap();
-    for t in tokens {
-        println!("{:?}", t)
-    }
+    parser::Parser::new("test.txt").parse().unwrap();
 }
