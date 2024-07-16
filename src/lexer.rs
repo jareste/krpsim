@@ -10,7 +10,7 @@ struct Lexer {
     current: usize,
 }
 
-pub fn lex(filename: &str) -> Result<Vec<Token>, io::Error> {
+pub fn lex(filename: &'static str) -> Result<Vec<Token>, io::Error> {
     let mut tokens: Vec<Token> = Vec::new();
     let lines = read_lines(filename)?;
     for line in lines.flatten() {
