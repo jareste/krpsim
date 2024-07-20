@@ -1,22 +1,17 @@
 use crate::lexer;
+use crate::Process;
 use std::collections::HashMap;
 
 use crate::tokens::Token;
 
-struct Process {
-    id: String,
-    input: Vec<(String, u64)>,
-    output: Vec<(String, u64)>,
-    time: u64,
-}
-
+#[derive(Debug)]
 pub struct Parser {
     current: usize,
     tokens: Vec<Token>,
 
-    stocks: HashMap<String, u64>,
-    process: Vec<Process>,
-    optimize: Option<Vec<String>>,
+    pub stocks: HashMap<String, u64>,
+    pub process: Vec<Process>,
+    pub optimize: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -28,7 +23,9 @@ pub enum Error {
     DuplicatedOptimize,
     DuplicatedIdentifier,
     UnexpectedEOF,
-    UnexpectedToken,
+    UnexpectedToken(Token),
+    UndefiendStock(String),
+    ExpectedToken(Token, Token),
 }
 
 impl Parser {
@@ -75,22 +72,37 @@ impl Parser {
                         Some(token) => match token {
                             Token::LeftParen => Ok(self.parse_process(ident)?),
                             Token::Number(_) => Ok(self.parse_stock(ident)?),
-                            _ => Err(Error::UnexpectedToken),
+                            _ => Err(Error::UnexpectedToken(token.clone())),
                         },
                     }
                 }
-                _ => Err(Error::UnexpectedToken),
+                Token::NewLine => Ok(self.consume(Token::NewLine)?),
+                _ => Err(Error::UnexpectedToken(t.clone())),
             },
         }
     }
 
     fn parse_process(&mut self, id: String) -> Result<(), Error> {
-        // TODO: Check that the ident is not in stocks
-        // TODO: Check that the input is not in stocks
+        if self.stocks.get(&id).is_some() {
+            return Err(Error::DuplicatedIdentifier);
+        }
+        if self.process.iter().any(|x| x.id == id) {
+            return Err(Error::DuplicatedIdentifier);
+        }
         let input = self.parse_tuple()?;
+        // NOTE: Probably there is a better way
+        for (k, _) in input.iter() {
+            if !self.stocks.contains_key(k) {
+                return Err(Error::UndefiendStock(k.to_string()));
+            }
+        }
         self.consume(Token::Colon)?;
-        // TODO: Create outputs if is not in stocks
         let output = self.parse_tuple()?;
+        for (k, _) in output.iter() {
+            if !self.stocks.contains_key(k) {
+                self.stocks.insert(k.to_string(), 0);
+            }
+        }
         self.consume(Token::Colon)?;
         let time = self.consume_number()?;
         Ok(self.process.push(Process {
@@ -113,9 +125,12 @@ impl Parser {
             match self.peek() {
                 None => return Err(Error::UnexpectedEOF),
                 Some(token) => match token {
-                    Token::RightParen => return Ok(res),
+                    Token::RightParen => {
+                        self.advance();
+                        return Ok(res);
+                    }
                     Token::Semicolon => {}
-                    _ => return Err(Error::UnexpectedToken),
+                    _ => return Err(Error::UnexpectedToken(token.clone())),
                 },
             }
         }
@@ -149,7 +164,7 @@ impl Parser {
                     Token::Identifier(_) => {
                         res.push(self.consume_ident()?.to_string());
                     }
-                    _ => return Err(Error::UnexpectedToken),
+                    _ => return Err(Error::UnexpectedToken(t.clone())),
                 },
             }
             match self.peek() {
@@ -164,7 +179,7 @@ impl Parser {
                     Token::Semicolon => {
                         self.advance();
                     }
-                    _ => return Err(Error::UnexpectedToken),
+                    _ => return Err(Error::UnexpectedToken(token.clone())),
                 },
             }
         }
@@ -179,25 +194,35 @@ impl Parser {
                 self.advance();
                 Ok(())
             }
-            _ => Err(Error::UnexpectedToken),
+            Some(t) => Err(Error::ExpectedToken(token.clone(), t.clone())),
+            _ => Err(Error::UnexpectedEOF),
         }
     }
 
     fn consume_ident(&mut self) -> Result<&String, Error> {
-        match self.peek() {
+        match self.tokens.get(self.current) {
             Some(t) => match t {
-                Token::Identifier(ident) => Ok(ident),
-                _ => Err(Error::MissingProcess),
+                Token::Identifier(ident) => {
+                    self.current += 1;
+                    Ok(ident)
+                }
+                _ => Err(Error::ExpectedToken(
+                    Token::Identifier("".to_string()),
+                    t.clone(),
+                )),
             },
-            _ => Err(Error::MissingProcess),
+            _ => Err(Error::UnexpectedEOF),
         }
     }
 
     fn consume_number(&mut self) -> Result<u64, Error> {
-        match self.peek() {
+        match self.tokens.get(self.current) {
             Some(t) => match t {
-                Token::Number(n) => Ok(*n),
-                _ => Err(Error::MissingProcess),
+                Token::Number(n) => {
+                    self.current += 1;
+                    Ok(*n)
+                }
+                _ => Err(Error::ExpectedToken(Token::Number(0), t.clone())),
             },
             _ => Err(Error::MissingProcess),
         }
