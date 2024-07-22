@@ -23,7 +23,7 @@ fn main() {
     let mut parser = parser::Parser::new("test2.txt");
     match parser.parse() {
         Err(err) => {
-            println!("\n\nERROR !!!!!: {:?}", err);
+            eprintln!("\n\nERROR !!!!!: {:?}", err);
             return;
         }
         _ => {}

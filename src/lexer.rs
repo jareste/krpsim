@@ -17,7 +17,6 @@ pub fn lex(filename: &'static str) -> Result<Vec<Token>, io::Error> {
         if line.starts_with("#") || line.starts_with("\n") {
             continue;
         }
-        println!("HOLA {}", line);
         Lexer::new(line).tokenize(&mut tokens);
     }
     return Ok(tokens);
