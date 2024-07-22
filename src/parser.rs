@@ -91,11 +91,11 @@ impl Parser {
         }
         let input = self.parse_tuple()?;
         // NOTE: Probably there is a better way
-        for (k, _) in input.iter() {
-            if !self.stocks.contains_key(k) {
-                return Err(Error::UndefiendStock(k.to_string()));
-            }
-        }
+        // for (k, _) in input.iter() {
+        //     if !self.stocks.contains_key(k) {
+        //         return Err(Error::UndefiendStock(k.to_string()));
+        //     }
+        // }
         self.consume(Token::Colon)?;
         let output = self.parse_tuple()?;
         for (k, _) in output.iter() {
