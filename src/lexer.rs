@@ -14,9 +14,10 @@ pub fn lex(filename: &'static str) -> Result<Vec<Token>, io::Error> {
     let mut tokens: Vec<Token> = Vec::new();
     let lines = read_lines(filename)?;
     for line in lines.flatten() {
-        if line.starts_with("#") {
+        if line.starts_with("#") || line.starts_with("\n") {
             continue;
         }
+        println!("HOLA {}", line);
         Lexer::new(line).tokenize(&mut tokens);
     }
     return Ok(tokens);
@@ -35,7 +36,10 @@ impl Lexer {
                 ';' => self.advance(Token::Semicolon, tokens),
                 '(' => self.advance(Token::LeftParen, tokens),
                 ')' => self.advance(Token::RightParen, tokens),
-                ' ' => self.tokenize(tokens),
+                ' ' => {
+                    self.current += 1;
+                    self.tokenize(tokens)
+                },
                 _ => self.identifier(tokens),
             },
         }
