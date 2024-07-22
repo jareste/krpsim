@@ -1,0 +1,17 @@
+# adad
+stock:84
+otro:84
+otro1:84
+otro2:84
+otro3:84
+# adad
+
+process:(stock:1):(return:1):20
+# adad
+# adad
+# adad
+# adad
+# adad
+# adad
+# process2:(otro2:1):(stock:1):20
+optimize:(stock;time)
