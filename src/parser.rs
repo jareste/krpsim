@@ -129,7 +129,7 @@ impl Parser {
                         self.advance();
                         return Ok(res);
                     }
-                    Token::Semicolon => {}
+                    Token::Semicolon => { self.advance(); }
                     _ => return Err(Error::UnexpectedToken(token.clone())),
                 },
             }
