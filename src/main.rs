@@ -20,7 +20,7 @@ pub struct Data {
 }
 
 fn main() {
-    let mut parser = parser::Parser::new("test.txt");
+    let mut parser = parser::Parser::new("test2.txt");
     parser.parse().unwrap();
     let x = Data {
         stocks: parser.stocks,
