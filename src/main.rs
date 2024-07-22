@@ -21,7 +21,13 @@ pub struct Data {
 
 fn main() {
     let mut parser = parser::Parser::new("test2.txt");
-    parser.parse().unwrap();
+    match parser.parse() {
+        Err(err) => {
+            println!("\n\nERROR !!!!!: {:?}", err);
+            return;
+        }
+        _ => {}
+    };
     let x = Data {
         stocks: parser.stocks,
         processes: parser.process,
