@@ -5,7 +5,8 @@ otro2:84
 otro3:84
 
 process:(stock:1):(return:1):20
+process8:(return:1):(stock:1):20
 process2:(otro:2):(otro3:4):50
 process3:(otro2:3):(otro3:1):10
 
-optimize:(return;otro3)
+optimize:(return;otro3;time)

@@ -78,13 +78,18 @@ pub fn optimize(data: Data) -> Option<(u64, HashMap<String, u64>)> {
     let mut visited = HashSet::new();
     let mut best_time = u64::MAX;
     let mut best_stocks = None;
+    let mut states_checked = 0;
+    let mut states_skipped = 0;
 
     let optimize_for_time = data.objectives.contains(&"optimize".to_string());
 
     heap.push(State::new(0, data.stocks.clone(), &data.objectives));
 
     while let Some(state) = heap.pop() {
+        states_checked += 1;
+
         if visited.contains(&state.stocks) {
+            states_skipped += 1;
             continue;
         }
 
@@ -105,6 +110,9 @@ pub fn optimize(data: Data) -> Option<(u64, HashMap<String, u64>)> {
             }
         }
     }
+
+    println!("States checked: {}", states_checked);
+    println!("States skipped: {}", states_skipped);
 
     best_stocks.map(|stocks| (best_time, stocks))
 }

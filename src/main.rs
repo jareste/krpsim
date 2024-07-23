@@ -36,7 +36,11 @@ fn main() {
         objectives: parser.optimize.unwrap(),
     };
     println!("stocks: {:?}\n", x.stocks);
-    println!("processes: {:?}\n", x.processes);
+    println!("processes:");
+    for p in &x.processes {
+        println!("{:?}", p);
+    }
+    println!();
     println!("objectives: {:?}\n", x.objectives);
 
     if let Some((time, final_stocks)) = dijkstra::optimize(x) {
