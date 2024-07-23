@@ -31,7 +31,7 @@ pub enum Error {
 impl Parser {
     pub fn new(file: &'static str) -> Self {
         let tokens = lexer::lex(file).unwrap();
-        println!("{:?}", tokens);
+        // println!("{:?}", tokens);
         Self {
             current: 0,
             tokens,
