@@ -7,6 +7,8 @@ otro3:84
 # adad
 
 process:(stock:1):(return:1):20
+process2:(return:2):(otro3:4):50
+process3:(otro2:3):(otro3:1):10
 # adad
 # adad
 # adad
@@ -14,4 +16,4 @@ process:(stock:1):(return:1):20
 # adad
 # adad
 # process2:(otro2:1):(stock:1):20
-optimize:(stock;time)
+optimize:(otro3)

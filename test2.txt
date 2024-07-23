@@ -16,4 +16,4 @@ end_dream:(dream:3):(seeing_kids:2):60
 # or maximize some products over a long delay
 # optimize:(time|stock1;time|stock2;...)
 #
-optimize:(seeing_kids;time)
+optimize:(dollar)
