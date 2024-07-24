@@ -25,11 +25,13 @@ struct State {
     time: u64,
     stocks: StockState,
     objectives: HashMap<String, u64>,
+    heuristic: u64,
 }
 
 impl Ord for State {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.objectives.values().sum::<u64>().cmp(&self.objectives.values().sum::<u64>())
+        (other.objectives.values().sum::<u64>() + other.heuristic)
+            .cmp(&(self.objectives.values().sum::<u64>() + self.heuristic))
             .then_with(|| self.time.cmp(&other.time)) // Prioritize more objectives, then less time
     }
 }
@@ -41,14 +43,14 @@ impl PartialOrd for State {
 }
 
 impl State {
-    fn new(time: u64, stocks: HashMap<String, u64>, objectives: &[String]) -> Self {
+    fn new(time: u64, stocks: HashMap<String, u64>, objectives: &[String], heuristic: u64) -> Self {
         let mut objectives_map = HashMap::new();
         for obj in objectives {
             objectives_map.insert(obj.clone(), *stocks.get(obj).unwrap_or(&0));
         }
-        State { time, stocks: StockState(stocks), objectives: objectives_map }
+        State { time, stocks: StockState(stocks), objectives: objectives_map, heuristic }
     }
-    
+
     fn apply_process(&self, process: &Process, objectives: &[String]) -> Option<Self> {
         let mut new_stocks = self.stocks.0.clone();
 
@@ -69,12 +71,19 @@ impl State {
             *new_objectives.entry(obj.clone()).or_insert(0) = *new_stocks.get(obj).unwrap_or(&0);
         }
 
+        let heuristic = calculate_heuristic(&new_stocks, objectives);
+
         Some(State {
             time: self.time + process.time,
             stocks: StockState(new_stocks),
             objectives: new_objectives,
+            heuristic,
         })
     }
+}
+
+fn calculate_heuristic(stocks: &HashMap<String, u64>, objectives: &[String]) -> u64 {
+    objectives.iter().map(|obj| *stocks.get(obj).unwrap_or(&0)).sum()
 }
 
 pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
@@ -90,7 +99,9 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
 
     let optimize_for_time = data.objectives.contains(&"optimize".to_string());
 
-    heap.push(State::new(0, data.stocks.clone(), &data.objectives));
+
+    let initial_heuristic = calculate_heuristic(&data.stocks, &data.objectives);
+    heap.push(State::new(0, data.stocks.clone(), &data.objectives, initial_heuristic));
 
     while let Some(state) = heap.pop() {
 

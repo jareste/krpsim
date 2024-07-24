@@ -47,7 +47,7 @@ fn main() {
     println!("objectives: {:?}\n", x.objectives);
 
     /* 10 will be the delay. */
-    let delay = 1;
+    let delay = 180;
     if let Some((time, final_stocks)) = dijkstra::optimize(x, delay) {
         println!("Optimized in {} units of time with stocks: {:?}", time, final_stocks);
     } else {
