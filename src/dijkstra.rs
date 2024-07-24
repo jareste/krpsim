@@ -86,7 +86,7 @@ fn calculate_heuristic(stocks: &HashMap<String, u64>, objectives: &[String]) -> 
     objectives.iter().map(|obj| *stocks.get(obj).unwrap_or(&0)).sum()
 }
 
-pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
+pub fn dijkstra(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
     let mut heap = BinaryHeap::new();
     let mut visited = HashSet::new();
     let mut best_time = u64::MAX;

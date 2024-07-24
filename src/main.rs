@@ -8,9 +8,10 @@ mod lexer;
 mod parser;
 mod tokens;
 mod dijkstra;
+mod genetic;
 mod delay;
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Process {
     id: String,
     input: Vec<(String, u64)>,
@@ -18,7 +19,7 @@ pub struct Process {
     time: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Data {
     pub stocks: HashMap<String, u64>,
     pub processes: Vec<Process>,
@@ -58,9 +59,14 @@ fn main() {
 
     /* 10 will be the delay. */
     let delay = 10;
-    if let Some((time, final_stocks)) = dijkstra::optimize(x, delay) {
-        println!("Optimized in {} units of time with stocks: {:?}", time, final_stocks);
+    if let Some((time, final_stocks)) = dijkstra::dijkstra(x.clone(), delay) {
+        println!("Optimized using dijkstra in {} units of time with stocks: {:?}", time, final_stocks);
     } else {
-        println!("No solution found");
+        println!("No solution found using dijsktra");
+    }
+    if let Some((time, final_stocks)) = genetic::genetic_algorithm(x, delay) {
+        println!("Optimized using GA in {} units of time with stocks: {:?}", time, final_stocks);
+    } else {
+        println!("No solution found using GA");
     }
 }
