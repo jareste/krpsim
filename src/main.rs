@@ -2,6 +2,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::env;
 
 mod lexer;
 mod parser;
@@ -25,7 +26,16 @@ pub struct Data {
 }
 
 fn main() {
-    let mut parser = parser::Parser::new("test.txt");
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 2 {
+        eprintln!("Usage: {} <path to file>", args[0]);
+        return;
+    }
+    
+    let file = args[1].clone();
+    let file_static: &'static str = Box::leak(file.into_boxed_str());
+
+    let mut parser = parser::Parser::new(file_static);
     match parser.parse() {
         Err(err) => {
             eprintln!("\n\nERROR !!!!!: {:?}", err);
@@ -47,7 +57,7 @@ fn main() {
     println!("objectives: {:?}\n", x.objectives);
 
     /* 10 will be the delay. */
-    let delay = 180;
+    let delay = 10;
     if let Some((time, final_stocks)) = dijkstra::optimize(x, delay) {
         println!("Optimized in {} units of time with stocks: {:?}", time, final_stocks);
     } else {
