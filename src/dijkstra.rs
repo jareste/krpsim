@@ -1,8 +1,12 @@
 use crate::Data;
 use crate::Process;
+use crate::delay;
 use std::collections::{HashMap, BinaryHeap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::cmp::Ordering;
+use std::time::Instant;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use std::sync::Arc;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 struct StockState(HashMap<String, u64>);
@@ -73,7 +77,7 @@ impl State {
     }
 }
 
-pub fn optimize(data: Data) -> Option<(u64, HashMap<String, u64>)> {
+pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
     let mut heap = BinaryHeap::new();
     let mut visited = HashSet::new();
     let mut best_time = u64::MAX;
@@ -81,11 +85,21 @@ pub fn optimize(data: Data) -> Option<(u64, HashMap<String, u64>)> {
     let mut states_checked = 0;
     let mut states_skipped = 0;
 
+    let timer_flag = delay::start_timer(std::time::Duration::from_secs(delay as u64));
+    let start = Instant::now();
+
     let optimize_for_time = data.objectives.contains(&"optimize".to_string());
 
     heap.push(State::new(0, data.stocks.clone(), &data.objectives));
 
     while let Some(state) = heap.pop() {
+
+        /* delay checker */
+        if timer_flag.load(AtomicOrdering::SeqCst) {
+            println!("Timer elapsed, stopping optimization");
+            break;
+        }
+
         states_checked += 1;
 
         if visited.contains(&state.stocks) {
@@ -113,6 +127,10 @@ pub fn optimize(data: Data) -> Option<(u64, HashMap<String, u64>)> {
 
     println!("States checked: {}", states_checked);
     println!("States skipped: {}", states_skipped);
+
+    let elapsed = start.elapsed();
+
+    println!("Dijkstra executed in: {}.{:03} seconds\n", elapsed.as_secs(), elapsed.subsec_millis());
 
     best_stocks.map(|stocks| (best_time, stocks))
 }

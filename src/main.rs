@@ -1,10 +1,13 @@
 #![allow(warnings)]
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 mod lexer;
 mod parser;
 mod tokens;
 mod dijkstra;
+mod delay;
 
 #[derive(Debug)]
 pub struct Process {
@@ -43,7 +46,9 @@ fn main() {
     println!();
     println!("objectives: {:?}\n", x.objectives);
 
-    if let Some((time, final_stocks)) = dijkstra::optimize(x) {
+    /* 10 will be the delay. */
+    let delay = 1;
+    if let Some((time, final_stocks)) = dijkstra::optimize(x, delay) {
         println!("Optimized in {} units of time with stocks: {:?}", time, final_stocks);
     } else {
         println!("No solution found");
