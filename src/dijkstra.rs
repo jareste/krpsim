@@ -51,8 +51,9 @@ impl State {
         State { time, stocks: StockState(stocks), objectives: objectives_map, heuristic }
     }
 
-    fn apply_process(&self, process: &Process, objectives: &[String]) -> Option<Self> {
+    fn apply_process(&self, process: &Process, objectives: &[String]) -> Option<Vec<Self>> {
         let mut new_stocks = self.stocks.0.clone();
+        let mut new_processes = Vec::new();
 
         for (input_item, input_amount) in &process.input {
             let entry = new_stocks.get_mut(input_item)?;
@@ -73,12 +74,14 @@ impl State {
 
         let heuristic = calculate_heuristic(&new_stocks, objectives);
 
-        Some(State {
+        new_processes.push(State {
             time: self.time + process.time,
-            stocks: StockState(new_stocks),
-            objectives: new_objectives,
+            stocks: StockState(new_stocks.clone()),
+            objectives: new_objectives.clone(),
             heuristic,
-        })
+        });
+
+        return Some(new_processes);
     }
 }
 
@@ -131,7 +134,9 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
 
         for process in &data.processes {
             if let Some(new_state) = state.apply_process(process, &data.objectives) {
-                heap.push(new_state);
+                for state in new_state {
+                    heap.push(state);
+                }
             }
         }
     }
