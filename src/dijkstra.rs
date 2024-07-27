@@ -102,6 +102,7 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
 
     let optimize_for_time = data.objectives.contains(&"time".to_string());
 
+
     let initial_heuristic = calculate_heuristic(&data.stocks, &data.objectives);
     heap.push(State::new(0, data.stocks.clone(), &data.objectives, initial_heuristic));
 

@@ -14,5 +14,5 @@ livraison:(produit:1):(client_content:1):20
 # or maximize some products over a long delay
 # optimize:(time|stock1;time|stock2;...)
 #
-optimize:(time;client_content)
+optimize:(client_content)
 #
