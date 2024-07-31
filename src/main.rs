@@ -5,12 +5,13 @@ use std::sync::Arc;
 use std::env;
 
 mod lexer;
+mod forbidden_name;
 mod parser;
 mod tokens;
 mod dijkstra;
 mod delay;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Process {
     id: String,
     input: Vec<(String, u64)>,
@@ -18,7 +19,7 @@ pub struct Process {
     time: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Data {
     pub stocks: HashMap<String, u64>,
     pub processes: Vec<Process>,
@@ -57,10 +58,14 @@ fn main() {
     println!("objectives: {:?}\n", x.objectives);
 
     /* 10 will be the delay. */
-    let delay = 10;
-    if let Some((time, final_stocks)) = dijkstra::optimize(x, delay) {
-        println!("Optimized in {} units of time with stocks: {:?}", time, final_stocks);
-    } else {
-        println!("No solution found");
-    }
+    // let delay = 10;
+    // if let Some((time, final_stocks)) = dijkstra::optimize(x, delay) {
+    //     println!("Optimized in {} units of time with stocks: {:?}", time, final_stocks);
+    // } else {
+    //     println!("No solution found");
+    // }
+
+    let (best_solution, best_time) = forbidden_name::tabu_search(&x, 10000, 1000);
+
+    println!("Optimized in {} units of time with stocks: {:?}", best_time, best_solution.stocks);
 }
