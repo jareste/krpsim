@@ -17,5 +17,5 @@ cuisson_5:(steak_mi_cuit:1;poele:1):(steak_cuit:1;poele:1):10
 # or maximize some products over a long delay
 # optimize:(stock1;stock2;...)
 #
-optimize:(time;steak_cuit)
+optimize:(steak_cuit)
 #

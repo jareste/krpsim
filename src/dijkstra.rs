@@ -94,18 +94,14 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
     let mut visited = HashSet::new();
     let mut best_time = u64::MAX;
     let mut best_stocks = None;
-    let mut states_checked = 0;
-    let mut states_skipped = 0;
 
     let timer_flag = delay::start_timer(std::time::Duration::from_secs(delay as u64));
     let start = Instant::now();
 
-    let optimize_for_time = data.objectives.contains(&"time".to_string());
-
+    let optimize_for_time = false;
 
     let initial_heuristic = calculate_heuristic(&data.stocks, &data.objectives);
     heap.push(State::new(0, data.stocks.clone(), &data.objectives, initial_heuristic));
-
     while let Some(state) = heap.pop() {
 
         /* delay checker */
@@ -114,10 +110,7 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
             break;
         }
 
-        states_checked += 1;
-
         if visited.contains(&state.stocks) {
-            states_skipped += 1;
             continue;
         }
 
@@ -140,9 +133,6 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
             }
         }
     }
-
-    println!("States checked: {}", states_checked);
-    println!("States skipped: {}", states_skipped);
 
     let elapsed = start.elapsed();
 

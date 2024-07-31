@@ -90,6 +90,11 @@ impl Parser {
             return Err(Error::DuplicatedIdentifier);
         }
         let input = self.parse_tuple()?;
+        for (k, _) in input.iter() {
+            if !self.stocks.contains_key(k) {
+                self.stocks.insert(k.to_string(), 0);
+            }
+        }
         // NOTE: Probably there is a better way
         // for (k, _) in input.iter() {
         //     if !self.stocks.contains_key(k) {
