@@ -1,9 +1,16 @@
 extern crate rand;
+use crate::stock_scores;
 use crate::Data;
 use crate::Process;
 use crate::delay;
 use rand::Rng;
 use std::collections::HashMap;
+use crate::stock_scores::precompute_stock_scores;
+use std::cmp::Ordering;
+use std::time::Instant;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use std::sync::Arc;
+
 
 #[derive(Debug, Clone)]
 struct Individual {
@@ -21,6 +28,9 @@ impl Individual {
 }
 
 pub fn genetic_algorithm(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>)> {
+    let stock_scores = precompute_stock_scores(&data);
+    println!("Stock score: {:?}", stock_scores);
+    
     let population_size = 150;
     let generations = 200;
     let mutation_rate = 0.02;
@@ -34,10 +44,18 @@ pub fn genetic_algorithm(data: Data, delay: u32) -> Option<(u64, HashMap<String,
         })
         .collect();
 
-    for _ in 0..generations {
+    let timer_flag = delay::start_timer(std::time::Duration::from_secs(delay as u64));
+    let start = Instant::now();
+
+    while true {
+
+        if timer_flag.load(AtomicOrdering::SeqCst) {
+            println!("Timer elapsed, stopping optimization");
+            break;
+        }
 
         for individual in &mut population {
-            individual.fitness = evaluate_fitness(&data, &individual.chromosome, delay);
+            individual.fitness = evaluate_fitness(&data, &individual.chromosome, &stock_scores);
         }
 
         population.sort_by_key(|ind| std::cmp::Reverse(ind.fitness));
@@ -66,23 +84,20 @@ pub fn genetic_algorithm(data: Data, delay: u32) -> Option<(u64, HashMap<String,
     }
 
     let best_individual = population.iter().max_by_key(|ind| ind.fitness).unwrap();
-    let final_stock = simulate(&data, &best_individual.chromosome, delay);
+    let final_stock = simulate(&data, &best_individual.chromosome);
     Some((best_individual.fitness, final_stock))
 }
 
-fn evaluate_fitness(data: &Data, chromosome: &[String], delay: u32) -> u64 {
-    let stock = simulate(data, chromosome, delay);
-    *stock.get("client_content").unwrap_or(&0)
+fn evaluate_fitness(data: &Data, chromosome: &[String], stock_scores: &HashMap<String, u64>) -> u64 {
+    let stock = simulate(data, chromosome);
+    stock.iter().map(|(item, qty)| stock_scores.get(item).unwrap_or(&0) * qty).sum()
 }
 
-fn simulate(data: &Data, chromosome: &[String], delay: u32) -> HashMap<String, u64> {
+fn simulate(data: &Data, chromosome: &[String]) -> HashMap<String, u64> {
     let mut current_stock = data.stocks.clone();
     let mut total_time = 0;
 
     for process_id in chromosome {
-        if total_time >= delay {
-            break;
-        }
 
         if let Some(process) = data.processes.iter().find(|p| &p.id == process_id) {
             if process.input.iter().all(|(item, qty)| current_stock.get(item).unwrap_or(&0) >= qty) {

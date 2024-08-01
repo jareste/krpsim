@@ -10,6 +10,8 @@ mod tokens;
 mod dijkstra;
 mod genetic;
 mod delay;
+mod stock_scores;
+
 
 #[derive(Debug,Clone)]
 pub struct Process {
@@ -58,7 +60,7 @@ fn main() {
     println!("objectives: {:?}\n", x.objectives);
 
     /* 10 will be the delay. */
-    let delay = 10;
+    let delay = 5;
     if let Some((time, final_stocks)) = dijkstra::dijkstra(x.clone(), delay) {
         println!("Optimized using dijkstra in {} units of time with stocks: {:?}", time, final_stocks);
     } else {
