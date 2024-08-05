@@ -33,7 +33,7 @@ pub fn execute(data: &mut Data, process: &Process, count: u64) {
     }
 }
 
-pub fn generate_neighbors(data: &Data) -> Vec<(Data, u64)> {
+pub fn generate_neighbors(data: &Data) -> Vec<(Data, u64, String, u64)> {
     let mut neighbors = Vec::new();
     for process in &data.processes {
         let max_count = process.input.iter().map(|(stock, amount)| {
@@ -43,20 +43,21 @@ pub fn generate_neighbors(data: &Data) -> Vec<(Data, u64)> {
         if max_count > 0 {
             let mut new_state = data.clone();
             execute(&mut new_state, process, max_count);
-            neighbors.push((new_state, process.time));
+            neighbors.push((new_state, process.time, process.id.clone(), max_count));
         }
     }
     neighbors
 }
 
-pub fn tabu_search(data: &Data, max_iterations: usize, tabu_list_size: usize, delay: u32) -> (Data, u64) {
+pub fn tabu_search(data: &Data, max_iterations: usize, tabu_list_size: usize, delay: u32) -> (Data, u64, Vec<(String, u64, u64)>) {
     let mut best_solution = data.clone();
     let mut current_solution = data.clone();
     let mut best_time = 0;
     let mut current_time = 0;
     let mut tabu_list = VecDeque::new();
     let mut iterations = 0;
-
+    let mut best_process_log = Vec::new();
+    let mut current_process_log = Vec::new();
     let timer_flag = delay::start_timer(std::time::Duration::from_secs(delay as u64));
     let start = Instant::now();
 
@@ -71,14 +72,18 @@ pub fn tabu_search(data: &Data, max_iterations: usize, tabu_list_size: usize, de
         let mut best_neighbor = None;
         let mut best_neighbor_value = 0;
         let mut best_neighbor_time = 0;
+        let mut best_neighbor_process_id = String::new();
+        let mut best_neighbor_count = 0;
 
-        for (neighbor, time) in &neighbors {
+        for (neighbor, time, process_id, count) in &neighbors {
             if !tabu_list.contains(&neighbor.stocks) {
                 let neighbor_value = objective_value(neighbor);
                 if neighbor_value > best_neighbor_value || (neighbor_value == best_neighbor_value && *time < best_neighbor_time) {
                     best_neighbor_value = neighbor_value;
                     best_neighbor_time = *time;
                     best_neighbor = Some(neighbor);
+                    best_neighbor_process_id = process_id.clone();
+                    best_neighbor_count = *count;
                 }
             }
         }
@@ -86,18 +91,22 @@ pub fn tabu_search(data: &Data, max_iterations: usize, tabu_list_size: usize, de
         if let Some(best) = best_neighbor {
             current_solution = best.clone();
             current_time += best_neighbor_time;
+            current_process_log.push((best_neighbor_process_id.clone(), best_neighbor_time, best_neighbor_count));
             if objective_value(&current_solution) > objective_value(&best_solution) {
                 best_solution = current_solution.clone();
                 best_time = current_time;
+                best_process_log = current_process_log.clone();
             } else if objective_value(&current_solution) == objective_value(&best_solution) && current_time < best_time {
                 best_solution = current_solution.clone();
                 best_time = current_time;
+                best_process_log = current_process_log.clone();
             }
 
-        } else if !neighbors.is_empty() {
-            let (neighbor, time) = &neighbors[0];
+        }else if !neighbors.is_empty() {
+            let (neighbor, time, process_id, count) = &neighbors[0];
             current_solution = neighbor.clone();
             current_time += *time;
+            current_process_log.push((process_id.clone(), *time, *count));
         }
 
         tabu_list.push_back(current_solution.stocks.clone());
@@ -112,5 +121,5 @@ pub fn tabu_search(data: &Data, max_iterations: usize, tabu_list_size: usize, de
 
     println!("Tabu Search executed in: {}.{:03} seconds\n", elapsed.as_secs(), elapsed.subsec_millis());
 
-    (best_solution, best_time)
+    (best_solution, best_time, best_process_log)
 }

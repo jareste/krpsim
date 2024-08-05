@@ -62,7 +62,9 @@ fn main() {
 
     println!("\x1b[36m\nOptimizing with Tabu Search...\n\x1b[0m");
 
-    let (best_solution, best_time) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
+    let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
+
+    println!("Best log: {:?}", best_log);
 
     println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_solution.stocks);
 
