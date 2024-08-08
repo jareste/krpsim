@@ -90,8 +90,8 @@ pub fn tabu_search(data: &Data, max_iterations: usize, tabu_list_size: usize, de
 
         if let Some(best) = best_neighbor {
             current_solution = best.clone();
+            current_process_log.push((best_neighbor_process_id.clone(), current_time, best_neighbor_count));
             current_time += best_neighbor_time;
-            current_process_log.push((best_neighbor_process_id.clone(), best_neighbor_time, best_neighbor_count));
             if objective_value(&current_solution) > objective_value(&best_solution) {
                 best_solution = current_solution.clone();
                 best_time = current_time;
@@ -105,8 +105,8 @@ pub fn tabu_search(data: &Data, max_iterations: usize, tabu_list_size: usize, de
         }else if !neighbors.is_empty() {
             let (neighbor, time, process_id, count) = &neighbors[0];
             current_solution = neighbor.clone();
+            current_process_log.push((process_id.clone(), current_time, *count));
             current_time += *time;
-            current_process_log.push((process_id.clone(), *time, *count));
         }
 
         tabu_list.push_back(current_solution.stocks.clone());
