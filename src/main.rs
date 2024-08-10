@@ -66,29 +66,31 @@ fn main() {
     println!();
     println!("objectives: {:?}\n", x.objectives);
 
-    // let delay = 1;
-
+    /* TABU SEARCH ALGO */ 
     println!("\x1b[36m\nOptimizing with Tabu Search...\n\x1b[0m");
 
     let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
 
-    println!("Best log: {:?}", best_log);
+    // println!("Best log: {:?}", best_log);
 
     println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_solution.stocks);
+    /**********************/
 
+    /* ACO ALGO */
     println!("\x1b[36m\nOptimizing with Ant Colony Optimitzation ...\n\x1b[0m");
 
     let (best_solution, best_time, best_stocks) = aco::aco_optimization(&x, 1000, 100, delay);
     println!("Optimized in {:?} units of time with stocks: {:?}", best_time, best_stocks);
-    // println!("Best solution: {:?}", best_solution);
+    /**********************/
 
-    /* 10 will be the delay. */
+    /* DIJKSTRA ALGO */
     println!("\x1b[36m\nOptimizing with Dijkstra's algorithm...\n\x1b[0m");
     if let Some((time, final_stocks)) = dijkstra::optimize(x, delay) {
         println!("Optimized in {} units of time with stocks: {:?}", time, final_stocks);
     } else {
         println!("No solution found");
     }
+    /**********************/
 
 
 }

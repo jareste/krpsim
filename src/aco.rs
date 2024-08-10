@@ -19,14 +19,23 @@ fn construct_solution(data: &Data, pheromones: &HashMap<String, f64>, rng: &mut 
     let mut solution = Vec::new();
     let mut available_stocks = data.stocks.clone();
     let mut total_time = 0;
+    let mut iteration_count = 0;
+    let max_iterations = 300;
 
     loop {
+        iteration_count += 1;
+
+        if iteration_count > max_iterations {
+            break;
+        }
+
         let next_processes = select_next_processes(&data.processes, &available_stocks, &pheromones, rng);
         if next_processes.is_empty() {
             break;
         }
 
         let mut max_time_per_step = 0;
+        let mut any_process_executed = false;
 
         for (process, count) in &next_processes {
             let process_clone = process.clone();
@@ -34,8 +43,13 @@ fn construct_solution(data: &Data, pheromones: &HashMap<String, f64>, rng: &mut 
                 if update_stocks_and_time(&mut available_stocks, &process_clone) {
                     solution.push((process.id.clone(), *count));
                     max_time_per_step = max_time_per_step.max(process.time);
+                    any_process_executed = true;
                 }
             }
+        }
+
+        if !any_process_executed {
+            break;
         }
 
         total_time += max_time_per_step;
@@ -162,7 +176,12 @@ fn update_pheromones(
     }
 }
 
-pub fn aco_optimization(data: &Data, num_iterations: usize, num_ants: usize, delay: u32) -> (Vec<(String, usize)>, u64, HashMap<String, u64>) {
+pub fn aco_optimization(
+    data: &Data, 
+    num_iterations: usize, 
+    num_ants: usize, 
+    delay: u32
+) -> (Vec<(String, usize)>, u64, HashMap<String, u64>) {
     let mut pheromones = initialize_pheromones(&data.processes);
     let mut rng = thread_rng();
 
@@ -171,7 +190,14 @@ pub fn aco_optimization(data: &Data, num_iterations: usize, num_ants: usize, del
     let mut best_time = u64::MAX;
     let mut best_stocks = HashMap::new();
 
-    let timer_flag = delay::start_timer(std::time::Duration::from_secs(delay as u64));
+    let timer_flag = Arc::new(AtomicBool::new(false));
+    let timer_flag_clone = Arc::clone(&timer_flag);
+
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(delay as u64));
+        timer_flag_clone.store(true, AtomicOrdering::SeqCst);
+    });
+
     let start = Instant::now();
 
     for _ in 0..num_iterations {
@@ -200,7 +226,7 @@ pub fn aco_optimization(data: &Data, num_iterations: usize, num_ants: usize, del
 
     let elapsed = start.elapsed();
 
-    println!("Ant Colony Optimitzation algo executed in: {}.{:03} seconds\n", elapsed.as_secs(), elapsed.subsec_millis());
+    println!("Ant Colony Optimization executed in: {}.{:03} seconds\n", elapsed.as_secs(), elapsed.subsec_millis());
 
     (best_solution, best_time, best_stocks)
 }
