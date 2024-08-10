@@ -15,17 +15,28 @@ fn initialize_pheromones(processes: &Vec<Process>) -> HashMap<String, f64> {
     pheromones
 }
 
-fn construct_solution(data: &Data, pheromones: &HashMap<String, f64>, rng: &mut ThreadRng) -> Vec<(String, usize)> {
+fn construct_solution(
+    data: &Data,
+    pheromones: &HashMap<String, f64>,
+    rng: &mut ThreadRng,
+    timer_flag: &Arc<AtomicBool>,
+) -> Vec<(String, usize)> {
     let mut solution = Vec::new();
     let mut available_stocks = data.stocks.clone();
     let mut total_time = 0;
     let mut iteration_count = 0;
-    let max_iterations = 300;
+    let max_iterations = 200;
+    let mut last_objective_score = 0;
+    let mut objective_stalled_count = 0;
 
     loop {
+        if timer_flag.load(AtomicOrdering::SeqCst) {
+            break;
+        }
+
         iteration_count += 1;
 
-        if iteration_count > max_iterations {
+        if iteration_count > max_iterations || objective_stalled_count > 5 {
             break;
         }
 
@@ -53,9 +64,27 @@ fn construct_solution(data: &Data, pheromones: &HashMap<String, f64>, rng: &mut 
         }
 
         total_time += max_time_per_step;
+
+        let current_objective_score = evaluate_objective(&data.objectives, &available_stocks);
+        if current_objective_score <= last_objective_score {
+            objective_stalled_count += 1;
+        } else {
+            objective_stalled_count = 0;
+        }
+        last_objective_score = current_objective_score;
     }
 
     solution
+}
+
+fn evaluate_objective(objectives: &Vec<String>, stocks: &HashMap<String, u64>) -> u64 {
+    let mut score = 0;
+    for objective in objectives {
+        if let Some(stock) = stocks.get(objective) {
+            score += stock;
+        }
+    }
+    score
 }
 
 fn select_next_processes<'a>(
@@ -209,7 +238,7 @@ pub fn aco_optimization(
         let mut solutions = Vec::new();
 
         for _ in 0..num_ants {
-            let solution = construct_solution(data, &pheromones, &mut rng);
+            let solution = construct_solution(data, &pheromones, &mut rng, &timer_flag);
             let (objective_score, total_time, final_stocks) = evaluate_solution(data, &solution);
             solutions.push((solution.clone(), objective_score, total_time));
 
