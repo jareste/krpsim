@@ -29,11 +29,19 @@ pub struct Data {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        eprintln!("Usage: {} <path to file>", args[0]);
+    if args.len() != 3 {
+        eprintln!("Usage: {} <path to file> <delay>" , args[0]);
         return;
     }
     
+    let delay = match args[2].parse::<u32>() {
+        Ok(value) => value,
+        Err(e) => {
+            eprintln!("Error parsing delay: {}", e);
+            return;
+        }
+    };
+
     let file = args[1].clone();
     let file_static: &'static str = Box::leak(file.into_boxed_str());
 
@@ -58,7 +66,7 @@ fn main() {
     println!();
     println!("objectives: {:?}\n", x.objectives);
 
-    let delay = 1;
+    // let delay = 1;
 
     println!("\x1b[36m\nOptimizing with Tabu Search...\n\x1b[0m");
 
