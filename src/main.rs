@@ -86,8 +86,9 @@ fn main() {
 
     /* DIJKSTRA ALGO */
     println!("\x1b[36m\nOptimizing with Dijkstra's algorithm...\n\x1b[0m");
-    if let Some((time, final_stocks)) = dijkstra::optimize(x, delay) {
+    if let Some((time, final_stocks, best_log)) = dijkstra::optimize(x, delay) {
         println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
+        println!("Best log: {:?}", best_log);
     } else {
         println!("No solution found");
     }
