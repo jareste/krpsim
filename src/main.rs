@@ -11,6 +11,7 @@ mod tokens;
 mod dijkstra;
 mod delay;
 mod aco;
+mod gen_file;
 
 #[derive(Debug, Clone)]
 pub struct Process {
@@ -70,7 +71,7 @@ fn main() {
     println!("\x1b[36m\nOptimizing with Tabu Search...\n\x1b[0m");
 
     let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
-
+    gen_file::generate_log_file("logs/tabu_search_log.txt", &x.stocks, &best_solution.stocks, &best_log, best_time).unwrap();
     println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_solution.stocks);
     println!("Best log: {:?}", best_log);
     /**********************/
@@ -79,13 +80,15 @@ fn main() {
     println!("\x1b[36m\nOptimizing with Ant Colony Optimitzation ...\n\x1b[0m");
 
     let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, 1000, 100, delay);
+    gen_file::generate_log_file("logs/aco_log.txt", &x.stocks, &best_stocks, &best_log, best_time).unwrap();
     println!("Optimized in {:?} units of time with stocks: {:?}\n", best_time, best_stocks);
     println!("Best log: {:?}", best_log);
     /**********************/
 
     /* DIJKSTRA ALGO */
     println!("\x1b[36m\nOptimizing with Dijkstra's algorithm...\n\x1b[0m");
-    if let Some((time, final_stocks, best_log)) = dijkstra::optimize(x, delay) {
+    if let Some((time, final_stocks, best_log)) = dijkstra::optimize(x.clone(), delay) {
+        gen_file::generate_log_file("logs/dijkstra_log.txt", &x.stocks, &final_stocks, &best_log, time).unwrap();
         println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
         println!("Best log: {:?}", best_log);
     } else {
