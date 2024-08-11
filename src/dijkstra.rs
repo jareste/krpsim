@@ -25,15 +25,14 @@ struct State {
     time: u64,
     stocks: StockState,
     objectives: HashMap<String, u64>,
-    heuristic: u64,
-    log: Vec<(String, u64, u64)>,  // Added field to store logs
+    log: Vec<(String, u64, u64)>,
 }
 
 impl Ord for State {
     fn cmp(&self, other: &Self) -> Ordering {
-        (other.objectives.values().sum::<u64>() + other.heuristic)
-            .cmp(&(self.objectives.values().sum::<u64>() + self.heuristic))
-            .then_with(|| self.time.cmp(&other.time)) // Prioritize more objectives, then less time
+        other.objectives.values().sum::<u64>()
+            .cmp(&self.objectives.values().sum::<u64>())
+            .then_with(|| self.time.cmp(&other.time))
     }
 }
 
@@ -44,69 +43,67 @@ impl PartialOrd for State {
 }
 
 impl State {
-    fn new(time: u64, stocks: HashMap<String, u64>, objectives: &[String], heuristic: u64, log: Vec<(String, u64, u64)>) -> Self {
+    fn new(time: u64, stocks: HashMap<String, u64>, objectives: &[String], log: Vec<(String, u64, u64)>) -> Self {
         let mut objectives_map = HashMap::new();
         for obj in objectives {
             objectives_map.insert(obj.clone(), *stocks.get(obj).unwrap_or(&0));
         }
-        State { time, stocks: StockState(stocks), objectives: objectives_map, heuristic, log }
+        State { time, stocks: StockState(stocks), objectives: objectives_map, log }
     }
 
-    fn apply_process(&self, process: &Process, objectives: &[String]) -> Option<Vec<Self>> {
+    fn apply_processes(&self, processes: &[Process], objectives: &[String]) -> Vec<Self> {
         let mut new_states = Vec::new();
-        let max_executable_times = process
-            .input
-            .iter()
-            .map(|(input_item, input_amount)| {
-                self.stocks
-                    .0
-                    .get(input_item)
-                    .map_or(0, |&available| available / input_amount)
-            })
-            .min()
-            .unwrap_or(0);
+        let mut max_time = 0;
+        let mut combined_log = self.log.clone();
+        let mut combined_stocks = self.stocks.0.clone();
+        let mut executed_any = false;
 
-        for times in 1..=max_executable_times {
-            let mut new_stocks = self.stocks.0.clone();
+        for process in processes {
+            let max_executable_times = process
+                .input
+                .iter()
+                .map(|(input_item, input_amount)| {
+                    self.stocks
+                        .0
+                        .get(input_item)
+                        .map_or(0, |&available| available / input_amount)
+                })
+                .min()
+                .unwrap_or(0);
 
-            for (input_item, input_amount) in &process.input {
-                *new_stocks.get_mut(input_item).unwrap() -= input_amount * times;
+            if max_executable_times > 0 {
+                executed_any = true;
+
+                for (input_item, input_amount) in &process.input {
+                    *combined_stocks.get_mut(input_item).unwrap() -= input_amount * max_executable_times;
+                }
+
+                for (output_item, output_amount) in &process.output {
+                    *combined_stocks.entry(output_item.clone()).or_insert(0) += output_amount * max_executable_times;
+                }
+
+                max_time = max_time.max(process.time);
+
+                combined_log.push((process.id.clone(), max_executable_times, self.time + process.time));
             }
+        }
 
-            for (output_item, output_amount) in &process.output {
-                *new_stocks.entry(output_item.clone()).or_insert(0) += output_amount * times;
-            }
-
+        if executed_any {
             let mut new_objectives = self.objectives.clone();
             for obj in objectives {
-                *new_objectives.entry(obj.clone()).or_insert(0) = *new_stocks.get(obj).unwrap_or(&0);
+                *new_objectives.entry(obj.clone()).or_insert(0) = *combined_stocks.get(obj).unwrap_or(&0);
             }
 
-            let heuristic = calculate_heuristic(&new_stocks, objectives);
-
-            // Clone the existing log and add the new process entry
-            let mut new_log = self.log.clone();
-            new_log.push((process.id.clone(), times, self.time + process.time));
-
             new_states.push(State {
-                time: self.time + process.time,
-                stocks: StockState(new_stocks),
+                time: self.time + max_time,
+                stocks: StockState(combined_stocks),
                 objectives: new_objectives,
-                heuristic,
-                log: new_log,
+                log: combined_log,
             });
         }
 
-        if new_states.is_empty() {
-            None
-        } else {
-            Some(new_states)
-        }
+        new_states
     }
-}
-
-fn calculate_heuristic(stocks: &HashMap<String, u64>, objectives: &[String]) -> u64 {
-    objectives.iter().map(|obj| *stocks.get(obj).unwrap_or(&0)).sum()
 }
 
 pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>, Vec<(String, u64, u64)>)> {
@@ -115,14 +112,13 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>, Ve
     let mut best_time = u64::MAX;
     let mut best_stocks = None;
     let mut best_log = None;
+    let mut best_objective_sum = 0;
 
     let timer_flag = delay::start_timer(std::time::Duration::from_secs(delay as u64));
     let start = Instant::now();
 
-    let optimize_for_time = false;
+    heap.push(State::new(0, data.stocks.clone(), &data.objectives, vec![]));
 
-    let initial_heuristic = calculate_heuristic(&data.stocks, &data.objectives);
-    heap.push(State::new(0, data.stocks.clone(), &data.objectives, initial_heuristic, vec![]));
     while let Some(state) = heap.pop() {
 
         /* delay checker */
@@ -131,28 +127,28 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>, Ve
             break;
         }
 
-        if visited.contains(&state.stocks) {
+        if visited.contains(&(state.stocks.clone(), state.time)) {
             continue;
         }
 
-        visited.insert(state.stocks.clone());
+        visited.insert((state.stocks.clone(), state.time));
 
         let current_objective_sum: u64 = state.objectives.values().sum();
 
-        if current_objective_sum > 0 {
-            if !optimize_for_time || state.time < best_time || best_stocks.is_none() {
-                best_time = state.time;
-                best_stocks = Some(state.stocks.0.clone());
-                best_log = Some(state.log.clone());
-            }
+        if current_objective_sum > best_objective_sum {
+            best_objective_sum = current_objective_sum;
+            best_time = state.time;
+            best_stocks = Some(state.stocks.0.clone());
+            best_log = Some(state.log.clone());
+        } else if current_objective_sum == best_objective_sum && state.time < best_time {
+            best_time = state.time;
+            best_stocks = Some(state.stocks.0.clone());
+            best_log = Some(state.log.clone());
         }
 
-        for process in &data.processes {
-            if let Some(new_states) = state.apply_process(process, &data.objectives) {
-                for new_state in new_states {
-                    heap.push(new_state);
-                }
-            }
+        let new_states = state.apply_processes(&data.processes, &data.objectives);
+        for new_state in new_states {
+            heap.push(new_state);
         }
     }
 

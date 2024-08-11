@@ -71,9 +71,8 @@ fn main() {
 
     let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
 
-    // println!("Best log: {:?}", best_log);
-
     println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_solution.stocks);
+    println!("Best log: {:?}", best_log);
     /**********************/
 
     /* ACO ALGO */
