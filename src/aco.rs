@@ -20,16 +20,18 @@ fn construct_solution(
     pheromones: &HashMap<String, f64>,
     rng: &mut ThreadRng,
     timer_flag: &Arc<AtomicBool>,
-) -> Vec<(String, usize)> {
+) -> (Vec<(String, usize)>, Vec<(String, u64, u64)>) {
     let mut solution = Vec::new();
+    let mut log = Vec::new();
     let mut available_stocks = data.stocks.clone();
     let mut total_time = 0;
     let mut iteration_count = 0;
-    let max_iterations = 200;
+    let max_iterations = 50;
     let mut last_objective_score = 0;
     let mut objective_stalled_count = 0;
 
     loop {
+
         if timer_flag.load(AtomicOrdering::SeqCst) {
             break;
         }
@@ -57,6 +59,10 @@ fn construct_solution(
                     any_process_executed = true;
                 }
             }
+            /* loging for printing solution */
+            if any_process_executed {
+                log.push((process.id.clone(), *count as u64, total_time));
+            }
         }
 
         if !any_process_executed {
@@ -74,7 +80,7 @@ fn construct_solution(
         last_objective_score = current_objective_score;
     }
 
-    solution
+    (solution, log)
 }
 
 fn evaluate_objective(objectives: &Vec<String>, stocks: &HashMap<String, u64>) -> u64 {
@@ -210,7 +216,7 @@ pub fn aco_optimization(
     num_iterations: usize, 
     num_ants: usize, 
     delay: u32
-) -> (Vec<(String, usize)>, u64, HashMap<String, u64>) {
+) -> (Vec<(String, usize)>, u64, HashMap<String, u64>, Vec<(String, u64, u64)>) {
     let mut pheromones = initialize_pheromones(&data.processes);
     let mut rng = thread_rng();
 
@@ -218,6 +224,7 @@ pub fn aco_optimization(
     let mut best_score = 0;
     let mut best_time = u64::MAX;
     let mut best_stocks = HashMap::new();
+    let mut best_log = Vec::new();
 
     let timer_flag = Arc::new(AtomicBool::new(false));
     let timer_flag_clone = Arc::clone(&timer_flag);
@@ -238,7 +245,7 @@ pub fn aco_optimization(
         let mut solutions = Vec::new();
 
         for _ in 0..num_ants {
-            let solution = construct_solution(data, &pheromones, &mut rng, &timer_flag);
+            let (solution, log) = construct_solution(data, &pheromones, &mut rng, &timer_flag);
             let (objective_score, total_time, final_stocks) = evaluate_solution(data, &solution);
             solutions.push((solution.clone(), objective_score, total_time));
 
@@ -247,6 +254,7 @@ pub fn aco_optimization(
                 best_time = total_time;
                 best_solution = solution;
                 best_stocks = final_stocks;
+                best_log = log;
             }
         }
 
@@ -257,5 +265,5 @@ pub fn aco_optimization(
 
     println!("Ant Colony Optimization executed in: {}.{:03} seconds\n", elapsed.as_secs(), elapsed.subsec_millis());
 
-    (best_solution, best_time, best_stocks)
+    (best_solution, best_time, best_stocks, best_log)
 }

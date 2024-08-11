@@ -79,14 +79,15 @@ fn main() {
     /* ACO ALGO */
     println!("\x1b[36m\nOptimizing with Ant Colony Optimitzation ...\n\x1b[0m");
 
-    let (best_solution, best_time, best_stocks) = aco::aco_optimization(&x, 1000, 100, delay);
-    println!("Optimized in {:?} units of time with stocks: {:?}", best_time, best_stocks);
+    let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, 1000, 100, delay);
+    println!("Optimized in {:?} units of time with stocks: {:?}\n", best_time, best_stocks);
+    println!("Best log: {:?}", best_log);
     /**********************/
 
     /* DIJKSTRA ALGO */
     println!("\x1b[36m\nOptimizing with Dijkstra's algorithm...\n\x1b[0m");
     if let Some((time, final_stocks)) = dijkstra::optimize(x, delay) {
-        println!("Optimized in {} units of time with stocks: {:?}", time, final_stocks);
+        println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
     } else {
         println!("No solution found");
     }
