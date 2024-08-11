@@ -84,7 +84,7 @@ impl State {
 
                 max_time = max_time.max(process.time);
 
-                combined_log.push((process.id.clone(), max_executable_times, self.time + process.time));
+                combined_log.push((process.id.clone(), max_executable_times, self.time));
             }
         }
 
