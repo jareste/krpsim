@@ -51,7 +51,7 @@ fn get_args() -> (String, u32, Vec<String>) {
                 .help("Algorithms to execute")
                 .required(false)
                 .action(ArgAction::Append)
-                .value_parser(["dijkstra", "aco", "tabu", "ga", "sa", "a*"])
+                .value_parser(["dijkstra", "aco", "tabu", "ga", "sa", "a*", "all"])
                 .ignore_case(true),
         )
         .get_matches();
@@ -73,7 +73,7 @@ fn get_args() -> (String, u32, Vec<String>) {
 
 fn main() {
 
-    let (file, delay, algorithms) = get_args();
+    let (file, delay, mut algorithms) = get_args();
 
     /* PARSING */
     let file_static: &'static str = Box::leak(file.into_boxed_str());
@@ -100,6 +100,16 @@ fn main() {
     println!("objectives: {:?}\n", x.objectives);
     /**********************/
 
+    if algorithms.contains(&"all".to_string()) {
+        algorithms = vec![
+            "dijkstra".to_string(),
+            "aco".to_string(),
+            "tabu".to_string(),
+            "ga".to_string(),
+            "sa".to_string(),
+            "a*".to_string(),
+        ];
+    }
 
     for algorithm in algorithms {
         match algorithm.to_lowercase().as_str() {
@@ -108,7 +118,8 @@ fn main() {
                 println!("\x1b[36m\nOptimizing with Dijkstra's algorithm...\n\x1b[0m");
                 if let Some((time, final_stocks, best_log)) = dijkstra::optimize(x.clone(), delay) {
                     println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
-                    gen_file::generate_log_file("logs/dijkstra_log.txt", &x.stocks, &final_stocks, &best_log, time).unwrap();
+                    gen_file::run_in_thread("logs/dijkstra_log.txt".to_string(), x.stocks.clone(), final_stocks.clone(), best_log.clone(), time);
+                    // gen_file::generate_log_file("logs/dijkstra_log.txt", &x.stocks, &final_stocks, &best_log, time).unwrap();
                     // println!("Best log: {:?}", best_log);
                 } else {
                     println!("No solution found");
@@ -121,7 +132,8 @@ fn main() {
 
                 let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, 1000, 100, delay);
                 println!("Optimized in {:?} units of time with stocks: {:?}\n", best_time, best_stocks);
-                gen_file::generate_log_file("logs/aco_log.txt", &x.stocks, &best_stocks, &best_log, best_time).unwrap();
+                gen_file::run_in_thread("logs/aco_log.txt".to_string(), x.stocks.clone(), best_stocks.clone(), best_log.clone(), best_time);
+                // gen_file::generate_log_file("logs/aco_log.txt", &x.stocks, &best_stocks, &best_log, best_time).unwrap();
                 // println!("Best log: {:?}", best_log);
                 /**********************/
             },
@@ -131,7 +143,8 @@ fn main() {
 
                 let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
                 println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_solution.stocks);
-                gen_file::generate_log_file("logs/tabu_search_log.txt", &x.stocks, &best_solution.stocks, &best_log, best_time).unwrap();
+                gen_file::run_in_thread("logs/tabu_search_log.txt".to_string(), x.stocks.clone(), best_solution.stocks.clone(), best_log.clone(), best_time);
+                // gen_file::generate_log_file("logs/tabu_search_log.txt", &x.stocks, &best_solution.stocks, &best_log, best_time).unwrap();
                 // println!("Best log: {:?}", best_log);
                 /**********************/
             },
