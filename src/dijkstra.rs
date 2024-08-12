@@ -51,61 +51,100 @@ impl State {
         State { time, stocks: StockState(stocks), objectives: objectives_map, log }
     }
 
-    fn apply_processes(&self, processes: &[Process], objectives: &[String]) -> Vec<Self> {
+    fn apply_processes(&self, processes: &[Process], objectives: &[String], timer_flag: &Arc<AtomicBool>) -> Vec<Self> {
         let mut new_states = Vec::new();
-        let mut max_time = 0;
-        let mut combined_log = self.log.clone();
-        let mut combined_stocks = self.stocks.0.clone();
-        let mut executed_any = false;
+        let mut process_combinations = vec![];
 
-        for process in processes {
-            let max_executable_times = process
-                .input
-                .iter()
-                .map(|(input_item, input_amount)| {
-                    self.stocks
-                        .0
-                        .get(input_item)
-                        .map_or(0, |&available| available / input_amount)
-                })
-                .min()
-                .unwrap_or(0);
+        self.generate_combinations(processes, &mut process_combinations, timer_flag);
 
-            if max_executable_times > 0 {
-                executed_any = true;
+        for combination in process_combinations {
+            if timer_flag.load(AtomicOrdering::SeqCst) {
+                break;
+            }
 
+            let mut new_stocks = self.stocks.0.clone();
+            let mut new_log = self.log.clone();
+            let mut max_time = 0;
+            let mut valid_combination = true;
+
+            for (process, times) in combination {
                 for (input_item, input_amount) in &process.input {
-                    if *combined_stocks.get(input_item).unwrap() < input_amount * max_executable_times {
-                        continue;
+                    let available = new_stocks.get_mut(input_item).unwrap();
+                    if *available < input_amount * times {
+                        valid_combination = false;
+                        break;
                     }
-                    *combined_stocks.get_mut(input_item).unwrap() -= input_amount * max_executable_times;
+                    *available -= input_amount * times;
                 }
-
+                if !valid_combination {
+                    break;
+                }
                 for (output_item, output_amount) in &process.output {
-                    *combined_stocks.entry(output_item.clone()).or_insert(0) += output_amount * max_executable_times;
+                    *new_stocks.entry(output_item.clone()).or_insert(0) += output_amount * times;
                 }
 
                 max_time = max_time.max(process.time);
 
-                combined_log.push((process.id.clone(), max_executable_times, self.time));
-            }
-        }
-
-        if executed_any {
-            let mut new_objectives = self.objectives.clone();
-            for obj in objectives {
-                *new_objectives.entry(obj.clone()).or_insert(0) = *combined_stocks.get(obj).unwrap_or(&0);
+                new_log.push((process.id.clone(), times, self.time + max_time));
             }
 
-            new_states.push(State {
-                time: self.time + max_time,
-                stocks: StockState(combined_stocks),
-                objectives: new_objectives,
-                log: combined_log,
-            });
+            if valid_combination {
+                let mut new_objectives = self.objectives.clone();
+                for obj in objectives {
+                    *new_objectives.entry(obj.clone()).or_insert(0) = *new_stocks.get(obj).unwrap_or(&0);
+                }
+
+                new_states.push(State {
+                    time: self.time + max_time,
+                    stocks: StockState(new_stocks),
+                    objectives: new_objectives,
+                    log: new_log,
+                });
+            }
         }
 
         new_states
+    }
+
+    fn generate_combinations<'a>(
+        &'a self,
+        processes: &'a [Process],
+        result: &mut Vec<Vec<(&'a Process, u64)>>,
+        timer_flag: &Arc<AtomicBool>,
+    ) {
+        fn generate<'a>(
+            processes: &'a [Process],
+            current: &mut Vec<(&'a Process, u64)>,
+            result: &mut Vec<Vec<(&'a Process, u64)>>,
+            state: &State,
+            timer_flag: &Arc<AtomicBool>,
+        ) {
+            if timer_flag.load(AtomicOrdering::SeqCst) {
+                return;
+            }
+
+            if processes.is_empty() {
+                if !current.is_empty() {
+                    result.push(current.clone());
+                }
+                return;
+            }
+
+            let process = &processes[0];
+            let max_executable_times = process.input.iter().map(|(input_item, input_amount)| {
+                state.stocks.0.get(input_item).map_or(0, |&available| available / input_amount)
+            }).min().unwrap_or(0);
+
+            generate(&processes[1..], current, result, state, timer_flag);
+
+            for times in 1..=max_executable_times {
+                current.push((process, times));
+                generate(&processes[1..], current, result, state, timer_flag);
+                current.pop();
+            }
+        }
+
+        generate(processes, &mut vec![], result, self, timer_flag);
     }
 }
 
@@ -149,7 +188,7 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>, Ve
             best_log = Some(state.log.clone());
         }
 
-        let new_states = state.apply_processes(&data.processes, &data.objectives);
+        let new_states = state.apply_processes(&data.processes, &data.objectives, &timer_flag);
         for new_state in new_states {
             heap.push(new_state);
         }
@@ -161,3 +200,4 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>, Ve
 
     best_stocks.map(|stocks| (best_time, stocks, best_log.unwrap_or_default()))
 }
+

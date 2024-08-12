@@ -54,10 +54,6 @@ impl State {
 
     fn apply_processes(&self, processes: &[Process], objectives: &[String]) -> Vec<Self> {
         let mut new_states = Vec::new();
-        let mut max_time = 0;
-        let mut combined_log = self.log.clone();
-        let mut combined_stocks = self.stocks.0.clone();
-        let mut executed_any = false;
 
         for process in processes {
             let max_executable_times = process
@@ -72,38 +68,41 @@ impl State {
                 .min()
                 .unwrap_or(0);
 
-            if max_executable_times > 0 {
-                executed_any = true;
+            for count in 1..=max_executable_times {
+                let mut new_stocks = self.stocks.0.clone();
+                let mut new_log = self.log.clone();
+                let mut valid_state = true;
 
                 for (input_item, input_amount) in &process.input {
-                    if *combined_stocks.get(input_item).unwrap() < input_amount * max_executable_times {
-                        continue;
+                    if *new_stocks.get(input_item).unwrap() < input_amount * count {
+                        valid_state = false;
+                        break;
                     }
-                    *combined_stocks.get_mut(input_item).unwrap() -= input_amount * max_executable_times;
+                    *new_stocks.get_mut(input_item).unwrap() -= input_amount * count;
+                }
+
+                if !valid_state {
+                    continue;
                 }
 
                 for (output_item, output_amount) in &process.output {
-                    *combined_stocks.entry(output_item.clone()).or_insert(0) += output_amount * max_executable_times;
+                    *new_stocks.entry(output_item.clone()).or_insert(0) += output_amount * count;
                 }
 
-                max_time = max_time.max(process.time);
+                new_log.push((process.id.clone(), count, self.time + process.time * count));
 
-                combined_log.push((process.id.clone(), max_executable_times, self.time));
+                let mut new_objectives = self.objectives.clone();
+                for obj in objectives {
+                    *new_objectives.entry(obj.clone()).or_insert(0) = *new_stocks.get(obj).unwrap_or(&0);
+                }
+
+                new_states.push(State {
+                    time: self.time + process.time * count,
+                    stocks: StockState(new_stocks),
+                    objectives: new_objectives,
+                    log: new_log,
+                });
             }
-        }
-
-        if executed_any {
-            let mut new_objectives = self.objectives.clone();
-            for obj in objectives {
-                *new_objectives.entry(obj.clone()).or_insert(0) = *combined_stocks.get(obj).unwrap_or(&0);
-            }
-
-            new_states.push(State {
-                time: self.time + max_time,
-                stocks: StockState(combined_stocks),
-                objectives: new_objectives,
-                log: combined_log,
-            });
         }
 
         new_states
