@@ -108,24 +108,6 @@ fn main() {
     println!("objectives: {:?}\n", x.objectives);
     /**********************/
 
-<<<<<<< HEAD
-    /* 10 will be the delay. */
-    let delay = 5;
-    if let Some((time, final_stocks)) = dijkstra::dijkstra(x.clone(), delay) {
-        println!("Optimized using dijkstra in {} units of time with stocks: {:?}", time, final_stocks);
-    } else {
-        println!("No solution found using dijsktra");
-    }
-    if let Some((time, final_stocks)) = genetic::genetic_algorithm(x.clone(), delay) {
-        println!("Optimized using GA in {} units of time with stocks: {:?}", time, final_stocks);
-    } else {
-        println!("No solution found using GA");
-    }
-    if let Some((time, final_stocks)) = simmulated_annealing::simmulated_annealing(x, delay) {
-        println!("Optimized using SA in {} units of time with stocks: {:?}", time, final_stocks);
-    } else {
-        println!("No solution found using GA");
-=======
     if algorithms.contains(&"all".to_string()) || algorithms.is_empty() {
         algorithms = vec![
             "dijkstra".to_string(),
@@ -183,6 +165,5 @@ fn main() {
             },
             _ => println!("Unknown algorithm: {}", algorithm),
         }
->>>>>>> docker+dijsktra
     }
 }
