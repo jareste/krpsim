@@ -75,6 +75,9 @@ impl State {
                 executed_any = true;
 
                 for (input_item, input_amount) in &process.input {
+                    if *combined_stocks.get(input_item).unwrap() < input_amount * max_executable_times {
+                        continue;
+                    }
                     *combined_stocks.get_mut(input_item).unwrap() -= input_amount * max_executable_times;
                 }
 

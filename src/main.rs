@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::env;
+use clap::{Arg, ArgAction, Command};
+use std::path::PathBuf;
 
 mod lexer;
 mod forbidden_name;
@@ -28,28 +30,58 @@ pub struct Data {
     pub objectives: Vec<String>,
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 3 {
-        eprintln!("Usage: {} <path to file> <delay>" , args[0]);
-        return;
-    }
-    
-    let delay = match args[2].parse::<u32>() {
-        Ok(value) => value,
-        Err(e) => {
-            eprintln!("Error parsing delay: {}", e);
-            return;
-        }
-    };
+fn get_args() -> (String, u32, Vec<String>) {
+    let matches = Command::new("my_cli_app")
+        .version("1.0")
+        .about("Executes various algorithms on the provided file")
+        .arg(
+            Arg::new("file")
+                .help("Path to the file")
+                .required(true)
+                .value_parser(clap::value_parser!(PathBuf)),
+        )
+        .arg(
+            Arg::new("delay")
+                .help("Delay in seconds")
+                .required(true)
+                .value_parser(clap::value_parser!(u32))
+        )
+        .arg(
+            Arg::new("algorithms")
+                .help("Algorithms to execute")
+                .required(false)
+                .action(ArgAction::Append)
+                .value_parser(["dijkstra", "aco", "tabu", "ga", "sa", "a*"])
+                .ignore_case(true),
+        )
+        .get_matches();
 
-    let file = args[1].clone();
+    // Get the file path
+    let file: PathBuf = matches.get_one::<PathBuf>("file").unwrap().clone();
+
+    // Get the delay value, with a fallback to 3 if parsing fails
+    let delay: u32 = *matches.get_one::<u32>("delay").unwrap_or(&3);
+
+    // Get the list of algorithms, if provided
+    let algorithms: Vec<String> = matches
+        .get_many::<String>("algorithms")
+        .map(|vals| vals.map(|v| v.to_string()).collect())
+        .unwrap_or_else(Vec::new);
+
+    (file.to_string_lossy().to_string(), delay, algorithms)
+}
+
+fn main() {
+
+    let (file, delay, algorithms) = get_args();
+
+    /* PARSING */
     let file_static: &'static str = Box::leak(file.into_boxed_str());
 
     let mut parser = parser::Parser::new(file_static);
     match parser.parse() {
         Err(err) => {
-            eprintln!("\n\nERROR !!!!!: {:?}", err);
+            eprintln!("\n\nFATAL ERROR !!!!!: {:?}", err);
             return;
         }
         _ => {}
@@ -66,35 +98,47 @@ fn main() {
     }
     println!();
     println!("objectives: {:?}\n", x.objectives);
-
-    /* TABU SEARCH ALGO */ 
-    println!("\x1b[36m\nOptimizing with Tabu Search...\n\x1b[0m");
-
-    let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
-    gen_file::generate_log_file("logs/tabu_search_log.txt", &x.stocks, &best_solution.stocks, &best_log, best_time).unwrap();
-    println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_solution.stocks);
-    println!("Best log: {:?}", best_log);
     /**********************/
 
-    /* ACO ALGO */
-    println!("\x1b[36m\nOptimizing with Ant Colony Optimitzation ...\n\x1b[0m");
 
-    let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, 1000, 100, delay);
-    gen_file::generate_log_file("logs/aco_log.txt", &x.stocks, &best_stocks, &best_log, best_time).unwrap();
-    println!("Optimized in {:?} units of time with stocks: {:?}\n", best_time, best_stocks);
-    println!("Best log: {:?}", best_log);
-    /**********************/
+    for algorithm in algorithms {
+        match algorithm.to_lowercase().as_str() {
+            "dijkstra" => {
+                /* DIJKSTRA ALGO */
+                println!("\x1b[36m\nOptimizing with Dijkstra's algorithm...\n\x1b[0m");
+                if let Some((time, final_stocks, best_log)) = dijkstra::optimize(x.clone(), delay) {
+                    println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
+                    gen_file::generate_log_file("logs/dijkstra_log.txt", &x.stocks, &final_stocks, &best_log, time).unwrap();
+                    // println!("Best log: {:?}", best_log);
+                } else {
+                    println!("No solution found");
+                }
+                /**********************/
+            },
+            "aco" => {
+                /* ACO ALGO */
+                println!("\x1b[36m\nOptimizing with Ant Colony Optimitzation ...\n\x1b[0m");
 
-    /* DIJKSTRA ALGO */
-    println!("\x1b[36m\nOptimizing with Dijkstra's algorithm...\n\x1b[0m");
-    if let Some((time, final_stocks, best_log)) = dijkstra::optimize(x.clone(), delay) {
-        gen_file::generate_log_file("logs/dijkstra_log.txt", &x.stocks, &final_stocks, &best_log, time).unwrap();
-        println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
-        println!("Best log: {:?}", best_log);
-    } else {
-        println!("No solution found");
+                let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, 1000, 100, delay);
+                println!("Optimized in {:?} units of time with stocks: {:?}\n", best_time, best_stocks);
+                gen_file::generate_log_file("logs/aco_log.txt", &x.stocks, &best_stocks, &best_log, best_time).unwrap();
+                // println!("Best log: {:?}", best_log);
+                /**********************/
+            },
+            "tabu" => {
+                /* TABU SEARCH ALGO */ 
+                println!("\x1b[36m\nOptimizing with Tabu Search...\n\x1b[0m");
+
+                let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
+                println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_solution.stocks);
+                gen_file::generate_log_file("logs/tabu_search_log.txt", &x.stocks, &best_solution.stocks, &best_log, best_time).unwrap();
+                // println!("Best log: {:?}", best_log);
+                /**********************/
+            },
+            "ga" => println!("Running Genetic Algorithm"),
+            "sa" => println!("Running Simulated Annealing"),
+            "a*" => println!("Running A*"),
+            _ => println!("Unknown algorithm: {}", algorithm),
+        }
     }
-    /**********************/
-
-
 }
