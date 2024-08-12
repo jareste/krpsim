@@ -114,10 +114,20 @@ pub fn parse_result_file(lines: io::Lines<io::BufReader<File>>) -> (Vec<Executio
 
 pub fn check_execution(data: &Data, executions: &Vec<Execution>, final_stocks: &HashMap<String, u64>) -> Result<(), String> {
     let mut current_stocks = data.stocks.clone();
+    let mut buffered_stocks = HashMap::new();
+    let mut previous_time = None;
 
     for execution in executions {
+
+        if Some(execution.time) != previous_time {
+            for (stock_name, qty) in buffered_stocks.drain() {
+                *current_stocks.entry(stock_name).or_insert(0) += qty;
+            }
+            previous_time = Some(execution.time);
+        }
+
         let process = data.processes.iter().find(|p| p.id == execution.process_name);
-        if (process.is_none()) {
+        if process.is_none() {
             return Err(format!("Process '{}' not found at time {}.", execution.process_name, execution.time));
         }
 
@@ -136,11 +146,15 @@ pub fn check_execution(data: &Data, executions: &Vec<Execution>, final_stocks: &
                 *current_stocks.get_mut(input_name).unwrap() -= input_qty;
             }
             for (output_name, output_qty) in &process.output {
-                *current_stocks.entry(output_name.clone()).or_insert(0) += output_qty;
+                *buffered_stocks.entry(output_name.clone()).or_insert(0) += output_qty;
             }
         } else {
             return Err(format!("Process '{}' not found at time {}.", execution.process_name, execution.time));
         }
+    }
+
+    for (stock_name, qty) in buffered_stocks {
+        *current_stocks.entry(stock_name).or_insert(0) += qty;
     }
 
     if current_stocks == *final_stocks {
