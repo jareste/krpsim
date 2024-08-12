@@ -14,19 +14,12 @@ mod dijkstra;
 mod genetic;
 mod simmulated_annealing;
 mod delay;
-<<<<<<< HEAD
-mod stock_scores;
-
-
-#[derive(Debug,Clone)]
-=======
 mod aco;
 mod gen_file;
 mod stock_scores;
 mod a_star;
 
 #[derive(Debug, Clone)]
->>>>>>> docker+dijsktra
 pub struct Process {
     id: String,
     input: Vec<(String, u64)>,
