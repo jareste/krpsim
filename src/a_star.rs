@@ -1,6 +1,7 @@
 use crate::Data;
 use crate::Process;
 use crate::delay;
+use crate::stock_scores;
 use std::collections::{HashMap, BinaryHeap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::cmp::Ordering;
@@ -51,51 +52,52 @@ impl State {
         State { time, stocks: StockState(stocks), objectives: objectives_map, log }
     }
 
-    fn apply_processes(&self, processes: &[Process], objectives: &[String], timer_flag: &Arc<AtomicBool>) -> Vec<Self> {
+    fn apply_processes(&self, processes: &[Process], objectives: &[String]) -> Vec<Self> {
         let mut new_states = Vec::new();
-        let mut process_combinations = vec![];
 
-        self.generate_combinations(processes, &mut process_combinations, timer_flag);
+        for process in processes {
+            let max_executable_times = process
+                .input
+                .iter()
+                .map(|(input_item, input_amount)| {
+                    self.stocks
+                        .0
+                        .get(input_item)
+                        .map_or(0, |&available| available / input_amount)
+                })
+                .min()
+                .unwrap_or(0);
 
-        for combination in process_combinations {
-            if timer_flag.load(AtomicOrdering::SeqCst) {
-                break;
-            }
+            for count in 1..=max_executable_times {
+                let mut new_stocks = self.stocks.0.clone();
+                let mut new_log = self.log.clone();
+                let mut valid_state = true;
 
-            let mut new_stocks = self.stocks.0.clone();
-            let mut new_log = self.log.clone();
-            let mut max_time = 0;
-            let mut valid_combination = true;
-
-            for (process, times) in combination {
                 for (input_item, input_amount) in &process.input {
-                    let available = new_stocks.get_mut(input_item).unwrap();
-                    if *available < input_amount * times {
-                        valid_combination = false;
+                    if *new_stocks.get(input_item).unwrap() < input_amount * count {
+                        valid_state = false;
                         break;
                     }
-                    *available -= input_amount * times;
+                    *new_stocks.get_mut(input_item).unwrap() -= input_amount * count;
                 }
-                if !valid_combination {
-                    break;
+
+                if !valid_state {
+                    continue;
                 }
+
                 for (output_item, output_amount) in &process.output {
-                    *new_stocks.entry(output_item.clone()).or_insert(0) += output_amount * times;
+                    *new_stocks.entry(output_item.clone()).or_insert(0) += output_amount * count;
                 }
 
-                max_time = max_time.max(process.time);
+                new_log.push((process.id.clone(), count, self.time + process.time * count));
 
-                new_log.push((process.id.clone(), times, self.time + max_time));
-            }
-
-            if valid_combination {
                 let mut new_objectives = self.objectives.clone();
                 for obj in objectives {
                     *new_objectives.entry(obj.clone()).or_insert(0) = *new_stocks.get(obj).unwrap_or(&0);
                 }
 
                 new_states.push(State {
-                    time: self.time + max_time,
+                    time: self.time + process.time * count,
                     stocks: StockState(new_stocks),
                     objectives: new_objectives,
                     log: new_log,
@@ -104,47 +106,6 @@ impl State {
         }
 
         new_states
-    }
-
-    fn generate_combinations<'a>(
-        &'a self,
-        processes: &'a [Process],
-        result: &mut Vec<Vec<(&'a Process, u64)>>,
-        timer_flag: &Arc<AtomicBool>,
-    ) {
-        fn generate<'a>(
-            processes: &'a [Process],
-            current: &mut Vec<(&'a Process, u64)>,
-            result: &mut Vec<Vec<(&'a Process, u64)>>,
-            state: &State,
-            timer_flag: &Arc<AtomicBool>,
-        ) {
-            if timer_flag.load(AtomicOrdering::SeqCst) {
-                return;
-            }
-
-            if processes.is_empty() {
-                if !current.is_empty() {
-                    result.push(current.clone());
-                }
-                return;
-            }
-
-            let process = &processes[0];
-            let max_executable_times = process.input.iter().map(|(input_item, input_amount)| {
-                state.stocks.0.get(input_item).map_or(0, |&available| available / input_amount)
-            }).min().unwrap_or(0);
-
-            generate(&processes[1..], current, result, state, timer_flag);
-
-            for times in 1..=max_executable_times {
-                current.push((process, times));
-                generate(&processes[1..], current, result, state, timer_flag);
-                current.pop();
-            }
-        }
-
-        generate(processes, &mut vec![], result, self, timer_flag);
     }
 }
 
@@ -155,6 +116,8 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>, Ve
     let mut best_stocks = None;
     let mut best_log = None;
     let mut best_objective_sum = 0;
+
+    let heuristic_scores = stock_scores::precompute_stock_scores(&data);
 
     let timer_flag = delay::start_timer(std::time::Duration::from_secs(delay as u64));
     let start = Instant::now();
@@ -188,16 +151,27 @@ pub fn optimize(data: Data, delay: u32) -> Option<(u64, HashMap<String, u64>, Ve
             best_log = Some(state.log.clone());
         }
 
-        let new_states = state.apply_processes(&data.processes, &data.objectives, &timer_flag);
-        for new_state in new_states {
-            heap.push(new_state);
+        let new_states = state.apply_processes(&data.processes, &data.objectives);
+        for mut new_state in new_states {
+            // Calculate the heuristic estimate (h) based on the remaining objectives
+            let heuristic_estimate = new_state.objectives.keys().map(|obj| {
+                heuristic_scores.get(obj).cloned().unwrap_or(0)
+            }).sum::<u64>();
+
+            // Update the state with the estimated total cost (g + h)
+            let total_cost_estimate = new_state.time + heuristic_estimate;
+            
+            // Push the state to the heap with the total cost estimate
+            heap.push(State {
+                time: total_cost_estimate,  // Use estimated total cost for priority
+                ..new_state
+            });
         }
     }
 
     let elapsed = start.elapsed();
 
-    println!("Dijkstra executed in: {}.{:03} seconds\n", elapsed.as_secs(), elapsed.subsec_millis());
+    println!("A* executed in: {}.{:03} seconds\n", elapsed.as_secs(), elapsed.subsec_millis());
 
     best_stocks.map(|stocks| (best_time, stocks, best_log.unwrap_or_default()))
 }
-

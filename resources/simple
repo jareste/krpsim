@@ -2,17 +2,32 @@
 # ultra simple demo - krpsim
 #
 # stock      name:quantity
-euro:10
+euro:80
 #
 # process   name:(need1:qty1;need2:qty2;[...]):(result1:qty1;result2:qty2;[...]):delay
 #
 achat_materiel:(euro:8):(materiel:1):10
-realisation_produit:(materiel:1):(produit:1):30
+realisation_produit:(materiel:1):(produit:1;euro:2):30
 livraison:(produit:1):(client_content:1):20
 #
 # optimize time for no process possible (eating stock, produce all possible),
 # or maximize some products over a long delay
 # optimize:(time|stock1;time|stock2;...)
 #
-optimize:(time;client_content)
+optimize:(client_content)
 #
+
+
+
+# 10 materiel
+
+
+# 10 produit 20 euro
+
+# 2 materiel 10 produit 4 euro
+
+# 12 produit 8 euro
+
+# 1 materiel 12 produit 
+
+# 13 produit 2 euro
