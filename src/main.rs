@@ -99,7 +99,7 @@ fn main() {
     println!("objectives: {:?}\n", x.objectives);
     /**********************/
 
-    if algorithms.contains(&"all".to_string()) {
+    if algorithms.contains(&"all".to_string()) || algorithms.is_empty() {
         algorithms = vec![
             "dijkstra".to_string(),
             "aco".to_string(),
