@@ -9,6 +9,7 @@ mod parser;
 mod tokens;
 mod dijkstra;
 mod genetic;
+mod simmulated_annealing;
 mod delay;
 mod stock_scores;
 
@@ -66,8 +67,13 @@ fn main() {
     } else {
         println!("No solution found using dijsktra");
     }
-    if let Some((time, final_stocks)) = genetic::genetic_algorithm(x, delay) {
+    if let Some((time, final_stocks)) = genetic::genetic_algorithm(x.clone(), delay) {
         println!("Optimized using GA in {} units of time with stocks: {:?}", time, final_stocks);
+    } else {
+        println!("No solution found using GA");
+    }
+    if let Some((time, final_stocks)) = simmulated_annealing::simmulated_annealing(x, delay) {
+        println!("Optimized using SA in {} units of time with stocks: {:?}", time, final_stocks);
     } else {
         println!("No solution found using GA");
     }
