@@ -14,6 +14,8 @@ mod dijkstra;
 mod delay;
 mod aco;
 mod gen_file;
+mod stock_scores;
+mod a_star;
 
 #[derive(Debug, Clone)]
 pub struct Process {
@@ -150,7 +152,17 @@ fn main() {
             },
             "ga" => println!("Running Genetic Algorithm"),
             "sa" => println!("Running Simulated Annealing"),
-            "a*" => println!("Running A*"),
+            "a*" => {
+                /* A_STAR ALGO */
+                println!("\x1b[36m\nOptimizing with A*'s algorithm...\n\x1b[0m");
+                if let Some((time, final_stocks, best_log)) = a_star::optimize(x.clone(), delay) {
+                    println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
+                    gen_file::run_in_thread("logs/a_star.txt".to_string(), x.stocks.clone(), final_stocks.clone(), best_log.clone(), time);
+                } else {
+                    println!("No solution found");
+                }
+                /**********************/
+            },
             _ => println!("Unknown algorithm: {}", algorithm),
         }
     }
