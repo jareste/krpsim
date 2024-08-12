@@ -119,7 +119,7 @@ fn main() {
                 println!("\x1b[36m\nOptimizing with Dijkstra's algorithm...\n\x1b[0m");
                 if let Some((time, final_stocks, best_log)) = dijkstra::optimize(x.clone(), delay) {
                     println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
-                    gen_file::run_in_thread("logs/dijkstra_log.txt".to_string(), x.stocks.clone(), final_stocks.clone(), best_log.clone(), time);
+                    gen_file::run_in_thread("logs/dijkstra_log.txt".to_string(), final_stocks.clone(), best_log.clone(), time);
                 } else {
                     println!("No solution found");
                 }
@@ -131,7 +131,7 @@ fn main() {
 
                 let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, 1000, 100, delay);
                 println!("Optimized in {:?} units of time with stocks: {:?}\n", best_time, best_stocks);
-                gen_file::run_in_thread("logs/aco_log.txt".to_string(), x.stocks.clone(), best_stocks.clone(), best_log.clone(), best_time);
+                gen_file::run_in_thread("logs/aco_log.txt".to_string(),  best_stocks.clone(), best_log.clone(), best_time);
                 /**********************/
             },
             "tabu" => {
@@ -140,7 +140,7 @@ fn main() {
 
                 let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
                 println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_solution.stocks);
-                gen_file::run_in_thread("logs/tabu_log.txt".to_string(), x.stocks.clone(), best_solution.stocks.clone(), best_log.clone(), best_time);
+                gen_file::run_in_thread("logs/tabu_log.txt".to_string(), best_solution.stocks.clone(), best_log.clone(), best_time);
                 /**********************/
             },
             "ga" => println!("Running Genetic Algorithm"),
@@ -150,7 +150,7 @@ fn main() {
                 println!("\x1b[36m\nOptimizing with A*'s algorithm...\n\x1b[0m");
                 if let Some((time, final_stocks, best_log)) = a_star::optimize(x.clone(), delay) {
                     println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
-                    gen_file::run_in_thread("logs/a_star_log.txt".to_string(), x.stocks.clone(), final_stocks.clone(), best_log.clone(), time);
+                    gen_file::run_in_thread("logs/a_star_log.txt".to_string(), final_stocks.clone(), best_log.clone(), time);
                 } else {
                     println!("No solution found");
                 }
