@@ -20,6 +20,7 @@ mod gen_file;
 mod stock_scores;
 mod a_star;
 mod ida_star;
+mod sgs;
 
 #[derive(Debug, Clone)]
 pub struct Process {
@@ -57,7 +58,7 @@ fn get_args() -> (String, u32, Vec<String>) {
                 .help("Algorithms to execute")
                 .required(false)
                 .action(ArgAction::Append)
-                .value_parser(["dijkstra", "aco", "tabu", "ga", "sa", "a*", "ida*", "all"])
+                .value_parser(["dijkstra", "aco", "tabu", "ga", "sa", "a*", "ida*", "sgs", "all"])
                 .ignore_case(true),
         )
         .get_matches();
@@ -113,6 +114,7 @@ fn main() {
             "sa".to_string(),
             "a*".to_string(),
             "ida*".to_string(),
+            "sgs".to_string(),
         ];
     }
 
@@ -135,6 +137,7 @@ fn main() {
 
                 let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, usize::MAX, 10000, delay);
                 println!("Optimized in {:?} units of time with stocks: {:?}\n", best_time, best_stocks);
+                println!("Best solution: {:?}", best_log);
                 handles.push(gen_file::run_in_thread("logs/aco_log.txt".to_string(),  best_stocks.clone(), best_log.clone(), best_time));
                 /**********************/
             },
@@ -188,9 +191,19 @@ fn main() {
                 }
                 /**********************/
             },
+            "sgs" => {
+                /* SA_STAR ALGO */
+                println!("\x1b[36m\nOptimizing with SGS algorithm...\n\x1b[0m");
+                let (data, time, log) = sgs::sgs_algorithm(x.clone(), delay as u64);
+                handles.push(gen_file::run_in_thread("logs/sgs_log.txt".to_string(), data.stocks.clone(), log.clone(), time));                
+                println!("Optimized in {} units of time with stocks: {:?}\n", time, data.stocks);
+                /**********************/
+
+            },
             _ => println!("Unknown algorithm: {}", algorithm),
         }
     }
+
 
     for handle in handles {
         if let Err(e) = handle.join() {
