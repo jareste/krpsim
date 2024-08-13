@@ -112,6 +112,7 @@ fn main() {
             "ga".to_string(),
             "sa".to_string(),
             "a*".to_string(),
+            "ida*".to_string(),
         ];
     }
 
@@ -148,9 +149,11 @@ fn main() {
             },
             "ga" => println!("Running Genetic Algorithm"),
             "sa" => {
+                /* SA_STAR ALGO */
                 println!("\x1b[36m\nOptimizing with Simmulated Annealing algorithm...\n\x1b[0m");
-                // let (best_state, best_time, best_log) = simmulated_annealing::simulated_annealing(&x, 1000.0, 10.0, 0.97, delay as u64);
-                // println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_state);
+                let (best_state, best_time, best_log) = simmulated_annealing::simulated_annealing(&x, 1000.0, 10.0, 0.97, delay as u64);
+                println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_state);
+                /**********************/
 
             },
             "a*" => {

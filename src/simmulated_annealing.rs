@@ -42,7 +42,7 @@ impl State {
                 energy -= lambda * qty as f64;
             }
         }
-        println!("Energy: {}", energy);
+        // println!("Energy: {}", energy);
 
         energy
     }
