@@ -1,19 +1,19 @@
 use std::fs::File;
 use std::io::{self, Write};
 use std::collections::HashMap;
-use std::thread;
+use std::thread::{self, JoinHandle};
 
 pub fn run_in_thread(
     filename: String,
     final_stocks: HashMap<String, u64>,
     log: Vec<(String, u64, u64)>,
     finish_time: u64,
-) {
+) -> JoinHandle<()> {
     thread::spawn(move || {
         if let Err(e) = generate_log_file(filename, final_stocks, log, finish_time) {
             eprintln!("Failed to generate log file: {}", e);
         }
-    });
+    })
 }
 
 pub fn generate_log_file(

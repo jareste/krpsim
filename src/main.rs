@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::env;
 use clap::{Arg, ArgAction, Command};
 use std::path::PathBuf;
+use std::thread::JoinHandle;
 
 mod lexer;
 mod forbidden_name;
@@ -75,6 +76,7 @@ fn get_args() -> (String, u32, Vec<String>) {
 fn main() {
 
     let (file, delay, mut algorithms) = get_args();
+    let mut handles: Vec<JoinHandle<()>> = Vec::new();
 
     /* PARSING */
     let file_static: &'static str = Box::leak(file.clone().into_boxed_str());
@@ -119,7 +121,7 @@ fn main() {
                 println!("\x1b[36m\nOptimizing with Dijkstra's algorithm...\n\x1b[0m");
                 if let Some((time, final_stocks, best_log)) = dijkstra::optimize(x.clone(), delay) {
                     println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
-                    gen_file::run_in_thread("logs/dijkstra_log.txt".to_string(), final_stocks.clone(), best_log.clone(), time);
+                    handles.push(gen_file::run_in_thread("logs/dijkstra_log.txt".to_string(), final_stocks.clone(), best_log.clone(), time));
                 } else {
                     println!("No solution found");
                 }
@@ -131,7 +133,7 @@ fn main() {
 
                 let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, 1000, 100, delay);
                 println!("Optimized in {:?} units of time with stocks: {:?}\n", best_time, best_stocks);
-                gen_file::run_in_thread("logs/aco_log.txt".to_string(),  best_stocks.clone(), best_log.clone(), best_time);
+                handles.push(gen_file::run_in_thread("logs/aco_log.txt".to_string(),  best_stocks.clone(), best_log.clone(), best_time));
                 /**********************/
             },
             "tabu" => {
@@ -140,14 +142,14 @@ fn main() {
 
                 let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
                 println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_solution.stocks);
-                gen_file::run_in_thread("logs/tabu_log.txt".to_string(), best_solution.stocks.clone(), best_log.clone(), best_time);
+                handles.push(gen_file::run_in_thread("logs/tabu_log.txt".to_string(), best_solution.stocks.clone(), best_log.clone(), best_time));
                 /**********************/
             },
             "ga" => println!("Running Genetic Algorithm"),
             "sa" => {
                 println!("\x1b[36m\nOptimizing with Simmulated Annealing algorithm...\n\x1b[0m");
-                let (best_state, best_time, best_log) = simmulated_annealing::simulated_annealing(&x, 1000.0, 10.0, 0.97, delay as u64);
-                println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_state);
+                // let (best_state, best_time, best_log) = simmulated_annealing::simulated_annealing(&x, 1000.0, 10.0, 0.97, delay as u64);
+                // println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_state);
 
             },
             "a*" => {
@@ -155,13 +157,19 @@ fn main() {
                 println!("\x1b[36m\nOptimizing with A*'s algorithm...\n\x1b[0m");
                 if let Some((time, final_stocks, best_log)) = a_star::optimize(x.clone(), delay) {
                     println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
-                    gen_file::run_in_thread("logs/a_star_log.txt".to_string(), final_stocks.clone(), best_log.clone(), time);
+                    handles.push(gen_file::run_in_thread("logs/a_star_log.txt".to_string(), final_stocks.clone(), best_log.clone(), time));
                 } else {
                     println!("No solution found");
                 }
                 /**********************/
             },
             _ => println!("Unknown algorithm: {}", algorithm),
+        }
+    }
+
+    for handle in handles {
+        if let Err(e) = handle.join() {
+            eprintln!("Thread panicked: {:?}", e);
         }
     }
 }
