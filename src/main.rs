@@ -19,6 +19,7 @@ mod aco;
 mod gen_file;
 mod stock_scores;
 mod a_star;
+mod ida_star;
 
 #[derive(Debug, Clone)]
 pub struct Process {
@@ -56,7 +57,7 @@ fn get_args() -> (String, u32, Vec<String>) {
                 .help("Algorithms to execute")
                 .required(false)
                 .action(ArgAction::Append)
-                .value_parser(["dijkstra", "aco", "tabu", "ga", "sa", "a*", "all"])
+                .value_parser(["dijkstra", "aco", "tabu", "ga", "sa", "a*", "ida*", "all"])
                 .ignore_case(true),
         )
         .get_matches();
@@ -131,7 +132,7 @@ fn main() {
                 /* ACO ALGO */
                 println!("\x1b[36m\nOptimizing with Ant Colony Optimitzation ...\n\x1b[0m");
 
-                let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, 1000, 100, delay);
+                let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, usize::MAX, 10000, delay);
                 println!("Optimized in {:?} units of time with stocks: {:?}\n", best_time, best_stocks);
                 handles.push(gen_file::run_in_thread("logs/aco_log.txt".to_string(),  best_stocks.clone(), best_log.clone(), best_time));
                 /**********************/
@@ -140,7 +141,7 @@ fn main() {
                 /* TABU SEARCH ALGO */ 
                 println!("\x1b[36m\nOptimizing with Tabu Search...\n\x1b[0m");
 
-                let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, usize::MAX, delay);
+                let (best_solution, best_time, best_log) = forbidden_name::tabu_search(&x, usize::MAX, 1000, delay);
                 println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_solution.stocks);
                 handles.push(gen_file::run_in_thread("logs/tabu_log.txt".to_string(), best_solution.stocks.clone(), best_log.clone(), best_time));
                 /**********************/
@@ -158,6 +159,17 @@ fn main() {
                 if let Some((time, final_stocks, best_log)) = a_star::optimize(x.clone(), delay) {
                     println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
                     handles.push(gen_file::run_in_thread("logs/a_star_log.txt".to_string(), final_stocks.clone(), best_log.clone(), time));
+                } else {
+                    println!("No solution found");
+                }
+                /**********************/
+            },
+            "ida*" => {
+                /* IDA_STAR ALGO */
+                println!("\x1b[36m\nOptimizing with IDA*'s algorithm...\n\x1b[0m");
+                if let Some((time, final_stocks, best_log)) = ida_star::optimize(x.clone(), delay) {
+                    println!("Optimized in {} units of time with stocks: {:?}\n", time, final_stocks);
+                    handles.push(gen_file::run_in_thread("logs/ida_star_log.txt".to_string(), final_stocks.clone(), best_log.clone(), time));
                 } else {
                     println!("No solution found");
                 }

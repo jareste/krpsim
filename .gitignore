@@ -1,2 +1,4 @@
 /target
 logs/*
+krpsim_verif/target/*
+krpsim_verif/target/.
