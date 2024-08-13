@@ -30,16 +30,30 @@ pub enum Error {
 
 impl Parser {
     pub fn new(file: &'static str) -> Self {
-        let tokens = lexer::lex(file).unwrap();
-        // println!("{:?}", tokens);
-        Self {
-            current: 0,
-            tokens,
+        match lexer::lex(file) {
+            Ok(tokens) => Self {
+                current: 0,
+                tokens,
 
-            stocks: HashMap::new(),
-            process: Vec::new(),
-            optimize: None,
+                stocks: HashMap::new(),
+                process: Vec::new(),
+                optimize: None,
+            },
+            Err(e) => {
+                eprintln!("Failed to lex file: {}", e);
+                std::process::exit(1);
+            }
         }
+        // let tokens = lexer::lex(file).unwrap();
+        // // println!("{:?}", tokens);
+        // Self {
+        //     current: 0,
+        //     tokens,
+
+        //     stocks: HashMap::new(),
+        //     process: Vec::new(),
+        //     optimize: None,
+        // }
     }
 
     pub fn parse(&mut self) -> Result<(), Error> {
