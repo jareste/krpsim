@@ -147,7 +147,17 @@ fn main() {
                 handles.push(gen_file::run_in_thread("logs/tabu_log.txt".to_string(), best_solution.stocks.clone(), best_log.clone(), best_time));
                 /**********************/
             },
-            "ga" => println!("Running Genetic Algorithm"),
+            "ga" => {
+                /* GENETIC ALGO */
+                println!("\x1b[36m\nOptimizing with Genetic Algorithm...\n\x1b[0m");
+                let Some((best_time, best_stocks, best_log)) = genetic::genetic_algorithm(x.clone(), delay) else {
+                    println!("No solution found");
+                    continue;
+                };
+                println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_stocks);
+                handles.push(gen_file::run_in_thread("logs/genetic_log.txt".to_string(), best_stocks.clone(), best_log.clone(), best_time));
+                /**********************/
+            },
             "sa" => {
                 /* SA_STAR ALGO */
                 println!("\x1b[36m\nOptimizing with Simmulated Annealing algorithm...\n\x1b[0m");
