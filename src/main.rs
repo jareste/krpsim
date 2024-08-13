@@ -144,7 +144,12 @@ fn main() {
                 /**********************/
             },
             "ga" => println!("Running Genetic Algorithm"),
-            "sa" => println!("Running Simulated Annealing"),
+            "sa" => {
+                println!("\x1b[36m\nOptimizing with Simmulated Annealing algorithm...\n\x1b[0m");
+                let (best_state, best_time, best_log) = simmulated_annealing::simulated_annealing(&x, 1000.0, 10.0, 0.97, delay as u64);
+                println!("Optimized in {} units of time with stocks: {:?}\n", best_time, best_state);
+
+            },
             "a*" => {
                 /* A_STAR ALGO */
                 println!("\x1b[36m\nOptimizing with A*'s algorithm...\n\x1b[0m");
