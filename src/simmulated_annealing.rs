@@ -34,15 +34,22 @@ impl State {
         }
     }
 
-    fn calculate_energy(&self, objectives: &Vec<String>, lambda: f64) -> f64 {
+    fn calculate_energy(&self, objectives: &Vec<String>, stock_scores: &HashMap<String, u64>, lambda: f64) -> f64 {
         let mut energy = self.total_time as f64;
+
+        for (stock, score) in stock_scores {
+            if let Some(&qty) = self.stock_quantities.get(stock) {
+                energy += lambda * (*score as f64) * (1.0 / (qty as f64 + 1.0));
+            } else {
+                energy += lambda * (*score as f64);
+            }
+        }
 
         for obj in objectives {
             if let Some(&qty) = self.stock_quantities.get(obj) {
-                energy -= lambda * qty as f64;
+                energy -= qty as f64 * lambda;
             }
         }
-        // println!("Energy: {}", energy);
 
         energy
     }
@@ -119,6 +126,8 @@ pub fn simulated_annealing(data: &Data, initial_temp: f64, lambda: f64, alpha: f
     let mut current_state = State::new(&data.stocks);
     let mut best_state = current_state.clone();
     let mut temp = initial_temp;
+    let stock_scores = precompute_stock_scores(&data);
+
 
     let timer_flag = delay::start_timer(std::time::Duration::from_secs(max_delay as u64));
     let start = Instant::now();
@@ -132,14 +141,14 @@ pub fn simulated_annealing(data: &Data, initial_temp: f64, lambda: f64, alpha: f
         }
         let new_state = current_state.random_neighbor(data, &mut rng);
 
-        let current_energy = current_state.calculate_energy(&data.objectives, lambda);
-        let new_energy = new_state.calculate_energy(&data.objectives, lambda);
+        let current_energy = current_state.calculate_energy(&data.objectives, &stock_scores, lambda);
+        let new_energy = new_state.calculate_energy(&data.objectives,  &stock_scores, lambda);
 
         if new_energy < current_energy || rng.gen::<f64>() < ((current_energy - new_energy) / temp).exp() {
             current_state = new_state.clone();
         }
 
-        if new_state.calculate_energy(&data.objectives, lambda) < best_state.calculate_energy(&data.objectives, lambda) {
+        if new_state.calculate_energy(&data.objectives,  &stock_scores,lambda) < best_state.calculate_energy(&data.objectives,  &stock_scores,lambda) {
             best_state = new_state.clone();
         }
 
