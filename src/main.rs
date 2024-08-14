@@ -137,7 +137,6 @@ fn main() {
 
                 let (best_solution, best_time, best_stocks, best_log) = aco::aco_optimization(&x, usize::MAX, 10000, delay);
                 println!("Optimized in {:?} units of time with stocks: {:?}\n", best_time, best_stocks);
-                println!("Best solution: {:?}", best_log);
                 handles.push(gen_file::run_in_thread("logs/aco_log.txt".to_string(),  best_stocks.clone(), best_log.clone(), best_time));
                 /**********************/
             },
